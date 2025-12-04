@@ -1,181 +1,181 @@
-# Link Shortener
+# LittleLink - URL Shortener
 
-A modern, feature-rich link shortener built with Next.js, React, Drizzle ORM, PostgreSQL, and TailwindCSS.
+A modern, self-hosted link shortener built with Next.js, featuring Google OAuth authentication, PostgreSQL database, and comprehensive analytics.
 
 ## Features
 
-- 🔗 **URL Shortening** - Create short, memorable links
-- 🎨 **Custom Aliases** - Choose your own short codes
-- 📊 **Analytics Dashboard** - Track clicks, devices, browsers, and locations
-- 🔒 **Google OAuth** - Secure single-user authentication
-- 📱 **QR Code Generation** - Generate QR codes for your links
-- 🔑 **API Keys** - Programmatic access to the link shortener
-- 🎯 **Link Management** - View, edit, and delete your links
-- ⚡ **BFF Pattern** - Backend for Frontend architecture
+- 🔗 **URL Shortening**: Create short links with custom or auto-generated codes
+- 🔐 **Single-User Auth**: Google OAuth with email restriction (single authorized user)
+- 📊 **Analytics**: Track clicks, devices, browsers, and operating systems
+- 🎨 **Modern UI**: Clean, responsive interface built with Tailwind CSS
+- 📱 **QR Codes**: Generate QR codes for any short link
+- 🔄 **Link Management**: Toggle active/inactive status, set expiration dates
+- ⚡ **Fast Redirects**: Optimized redirect handling with async click tracking
+- 🗄️ **PostgreSQL**: Reliable database with Drizzle ORM
 
 ## Tech Stack
 
-- **Frontend:** Next.js 16, React 19, TailwindCSS
-- **Backend:** Next.js API Routes (BFF pattern)
-- **Database:** PostgreSQL with Drizzle ORM
-- **Authentication:** NextAuth.js with Google OAuth
-- **Validation:** Zod
-- **QR Codes:** qrcode library
+- **Framework**: Next.js 16 (App Router)
+- **UI**: React 19, Tailwind CSS
+- **Database**: PostgreSQL (Neon)
+- **ORM**: Drizzle ORM
+- **Authentication**: NextAuth.js with Google OAuth
+- **Validation**: Zod
+- **Deployment**: Vercel-ready
 
-## Getting Started
+## Quick Start
 
-### Prerequisites
+### 1. Prerequisites
 
-- Node.js 18+ and npm
-- PostgreSQL database
+- Node.js 18+ installed
+- PostgreSQL database (e.g., Neon, Supabase, or local)
 - Google OAuth credentials
 
-### 1. Install Dependencies
+### 2. Clone and Install
 
 ```bash
+git clone <your-repo-url>
+cd littlelink
 npm install
 ```
 
-### 2. Set Up Environment Variables
+### 3. Environment Setup
 
-Copy `.env.example` to `.env`:
+Copy `.env.example` to `.env` and fill in your values:
 
 ```bash
 cp .env.example .env
 ```
 
-Edit `.env` and fill in your values:
+Required environment variables:
 
-```env
-# Database
-DATABASE_URL=postgresql://user:password@localhost:5432/linkshortener
+- `DATABASE_URL`: Your PostgreSQL connection string
+- `NEXTAUTH_URL`: Your app URL (http://localhost:3000 for local dev)
+- `NEXTAUTH_SECRET`: Generate with `openssl rand -base64 32`
+- `GOOGLE_CLIENT_ID`: From Google Cloud Console
+- `GOOGLE_CLIENT_SECRET`: From Google Cloud Console
+- `NEXT_PUBLIC_APP_URL`: Public-facing app URL
+- `ALLOWED_USER_EMAIL`: Email address allowed to sign in
 
-# NextAuth - Generate secret with: openssl rand -base64 32
-NEXTAUTH_URL=http://localhost:3000
-NEXTAUTH_SECRET=your-generated-secret-here
-
-# Google OAuth
-GOOGLE_CLIENT_ID=your-google-client-id
-GOOGLE_CLIENT_SECRET=your-google-client-secret
-
-# App Configuration
-NEXT_PUBLIC_APP_URL=http://localhost:3000
-ALLOWED_USER_EMAIL=your-email@gmail.com
-```
-
-### 3. Set Up Google OAuth
+### 4. Set Up Google OAuth
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
-3. Enable the Google+ API
-4. Go to "Credentials" → "Create Credentials" → "OAuth Client ID"
-5. Choose "Web application"
-6. Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
-7. Copy the Client ID and Client Secret to your `.env` file
+2. Create a new project or select existing
+3. Enable Google+ API
+4. Go to "Credentials" → "Create Credentials" → "OAuth 2.0 Client ID"
+5. Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+6. Copy Client ID and Client Secret to `.env`
 
-### 4. Set Up Database
+### 5. Database Setup
 
-Create your PostgreSQL database:
-
-```bash
-createdb linkshortener
-```
-
-Push the schema to the database:
+Push the schema to your database:
 
 ```bash
 npm run db:push
 ```
 
-### 5. Run the Development Server
+For production, use migrations:
+
+```bash
+npm run db:generate
+npm run db:migrate
+```
+
+### 6. Run Development Server
 
 ```bash
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) in your browser.
+Visit [http://localhost:3000](http://localhost:3000)
 
-## Database Commands
+## Usage
+
+### Creating Short Links
+
+1. Sign in with your authorized Google account
+2. Enter the original URL
+3. (Optional) Set a custom short code
+4. (Optional) Add a title
+5. Click "Create Short Link"
+
+Your short link will be: `http://localhost:3000/abc123`
+
+### Managing Links
+
+- **Toggle Active/Inactive**: Temporarily disable links without deleting them
+- **View Analytics**: See click counts and statistics
+- **Generate QR Codes**: Create scannable QR codes for any link
+- **Delete Links**: Permanently remove links (this also deletes all click data)
+
+### API Endpoints
+
+All API endpoints require authentication except for the redirect handler:
+
+- `GET /[shortCode]` - Redirect to original URL (public)
+- `GET /api/links` - List all links
+- `POST /api/links` - Create new link
+- `GET /api/links/[id]` - Get single link
+- `PATCH /api/links/[id]` - Update link
+- `DELETE /api/links/[id]` - Delete link
+- `GET /api/links/[id]/qr` - Generate QR code
+- `GET /api/analytics/[linkId]` - Get analytics
+
+## Database Schema
+
+### Tables
+
+- **users**: User accounts (NextAuth)
+- **accounts**: OAuth accounts (NextAuth)
+- **sessions**: User sessions (NextAuth)
+- **links**: Short link mappings
+- **clicks**: Click tracking and analytics
+- **apiKeys**: API key management (future feature)
+
+## Development Commands
 
 ```bash
-# Generate migrations
-npm run db:generate
+npm run dev          # Start development server with Turbopack
+npm run build        # Build for production
+npm start            # Start production server
+npm run lint         # Run ESLint
 
-# Apply migrations
-npm run db:migrate
-
-# Push schema to database (useful for development)
-npm run db:push
-
-# Open Drizzle Studio (database GUI)
-npm run db:studio
+npm run db:push      # Push schema changes to database
+npm run db:generate  # Generate migrations
+npm run db:migrate   # Apply migrations
+npm run db:studio    # Open Drizzle Studio GUI
 ```
-
-## Project Structure
-
-```
-link-shortener/
-├── app/
-│   ├── api/                    # API routes (BFF pattern)
-│   │   ├── auth/              # Authentication endpoints
-│   │   ├── links/             # Link management endpoints
-│   │   ├── api-keys/          # API key management
-│   │   └── analytics/         # Analytics endpoints
-│   ├── auth/                  # Auth pages
-│   ├── dashboard/             # Dashboard page
-│   └── s/[shortCode]/         # Short URL redirect handler
-├── components/                # React components
-├── lib/
-│   ├── db/                    # Database schema and connection
-│   ├── auth.ts               # NextAuth configuration
-│   ├── validations.ts        # Zod schemas
-│   └── utils.ts              # Utility functions
-└── types/                     # TypeScript type definitions
-```
-
-## API Routes
-
-### Links
-
-- `GET /api/links` - List all links
-- `POST /api/links` - Create a new link
-- `GET /api/links/[id]` - Get a specific link
-- `PATCH /api/links/[id]` - Update a link
-- `DELETE /api/links/[id]` - Delete a link
-- `GET /api/links/[id]/qr` - Get QR code for a link
-
-### Analytics
-
-- `GET /api/analytics/[linkId]?days=30` - Get analytics for a link
-
-### API Keys
-
-- `GET /api/api-keys` - List all API keys
-- `POST /api/api-keys` - Create a new API key
-- `DELETE /api/api-keys?id=[id]` - Delete an API key
 
 ## Deployment
 
-### Environment Variables for Production
-
-Make sure to update these in your production environment:
-
-- `DATABASE_URL` - Your production PostgreSQL connection string
-- `NEXTAUTH_URL` - Your production domain (e.g., `https://yourdomain.com`)
-- `NEXTAUTH_SECRET` - Generate a new secret for production
-- `NEXT_PUBLIC_APP_URL` - Your production domain
-- `GOOGLE_CLIENT_ID` & `GOOGLE_CLIENT_SECRET` - Production OAuth credentials
-- `ALLOWED_USER_EMAIL` - The email address allowed to access the app
-
-### Deploy to Vercel
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new)
+### Vercel (Recommended)
 
 1. Push your code to GitHub
-2. Import the repository in Vercel
-3. Add all environment variables
+2. Import project in Vercel
+3. Add environment variables
 4. Deploy
+
+### Environment Variables for Production
+
+Update these for production:
+
+```env
+NEXTAUTH_URL=https://your-domain.com
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+ALLOWED_USER_EMAIL=your-production-email@example.com
+```
+
+## Security Notes
+
+- Only the email specified in `ALLOWED_USER_EMAIL` can sign in
+- All routes except `/[shortCode]` and `/auth/*` require authentication
+- API keys table is prepared for future programmatic access
+- Click tracking uses fire-and-forget pattern to avoid slowing redirects
 
 ## License
 
 MIT
+
+## Credits
+
+Built with ❤️ using Next.js, React, and Drizzle ORM

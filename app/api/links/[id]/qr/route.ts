@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { links } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import QRCode from "qrcode";
 
+// GET /api/links/[id]/qr - Generate QR code for a link
 export async function GET(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
+
     const [link] = await db
       .select()
       .from(links)
@@ -26,9 +30,12 @@ export async function GET(
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
-    const shortUrl = `${process.env.NEXT_PUBLIC_APP_URL}/s/${link.shortCode}`;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const shortUrl = `${appUrl}/${link.shortCode}`;
+
+    // Generate QR code as data URL
     const qrCodeDataUrl = await QRCode.toDataURL(shortUrl, {
-      width: 400,
+      width: 300,
       margin: 2,
     });
 

@@ -1,14 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { apiKeys } from "@/lib/db/schema";
 import { createApiKeySchema } from "@/lib/validations";
-import { generateApiKey } from "@/lib/utils";
 import { eq, and } from "drizzle-orm";
+import { customAlphabet } from "nanoid";
 
-export async function GET(req: NextRequest) {
+const nanoid = customAlphabet(
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+  32
+);
+
+// GET /api/api-keys - List all API keys
+export async function GET(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
@@ -17,10 +25,9 @@ export async function GET(req: NextRequest) {
       .select({
         id: apiKeys.id,
         name: apiKeys.name,
-        key: apiKeys.key,
         lastUsed: apiKeys.lastUsed,
-        isActive: apiKeys.isActive,
         createdAt: apiKeys.createdAt,
+        // Don't return the actual key for security
       })
       .from(apiKeys)
       .where(eq(apiKeys.userId, session.user.id));
@@ -35,27 +42,29 @@ export async function GET(req: NextRequest) {
   }
 }
 
-export async function POST(req: NextRequest) {
+// POST /api/api-keys - Create a new API key
+export async function POST(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const body = await req.json();
+    const body = await request.json();
     const validation = createApiKeySchema.safeParse(body);
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Invalid input", details: validation.error.errors },
+        { error: validation.error.errors[0].message },
         { status: 400 }
       );
     }
 
     const { name } = validation.data;
-    const key = generateApiKey();
+    const key = `sk_${nanoid()}`;
 
-    const [apiKey] = await db
+    const [newApiKey] = await db
       .insert(apiKeys)
       .values({
         userId: session.user.id,
@@ -64,7 +73,8 @@ export async function POST(req: NextRequest) {
       })
       .returning();
 
-    return NextResponse.json({ apiKey }, { status: 201 });
+    // Return the key only once during creation
+    return NextResponse.json({ apiKey: { ...newApiKey, key } }, { status: 201 });
   } catch (error) {
     console.error("Error creating API key:", error);
     return NextResponse.json(
@@ -74,14 +84,16 @@ export async function POST(req: NextRequest) {
   }
 }
 
-export async function DELETE(req: NextRequest) {
+// DELETE /api/api-keys?id=[id] - Delete an API key
+export async function DELETE(request: NextRequest) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { searchParams } = req.nextUrl;
+    const searchParams = request.nextUrl.searchParams;
     const id = searchParams.get("id");
 
     if (!id) {
@@ -91,11 +103,16 @@ export async function DELETE(req: NextRequest) {
       );
     }
 
-    await db
+    const [deletedKey] = await db
       .delete(apiKeys)
-      .where(and(eq(apiKeys.id, id), eq(apiKeys.userId, session.user.id)));
+      .where(and(eq(apiKeys.id, id), eq(apiKeys.userId, session.user.id)))
+      .returning();
 
-    return NextResponse.json({ message: "API key deleted successfully" });
+    if (!deletedKey) {
+      return NextResponse.json({ error: "API key not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting API key:", error);
     return NextResponse.json(

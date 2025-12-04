@@ -1,45 +1,52 @@
-import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
+import { NextAuthOptions } from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
-import { db } from "./db";
-import { config } from "./config";
+import { db } from "@/lib/db";
 
-export const { handlers, signIn, signOut, auth } = NextAuth({
-  adapter: DrizzleAdapter(db),
+export const authOptions: NextAuthOptions = {
+  adapter: DrizzleAdapter(db) as any,
   providers: [
-    Google({
-      clientId: config.auth.google.clientId,
-      clientSecret: config.auth.google.clientSecret,
-      authorization: {
-        params: {
-          prompt: "consent",
-          access_type: "offline",
-          response_type: "code",
-        },
-      },
+    GoogleProvider({
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
     }),
   ],
-  trustHost: true,
   callbacks: {
-    async signIn({ user, account, profile }) {
-      // Single user mode - only allow the specified email
-      console.log("Sign in attempt:", {
-        userEmail: user.email,
-        allowedEmail: config.auth.allowedUserEmail,
-        matches: user.email === config.auth.allowedUserEmail,
-        account: account?.provider,
-        profile: profile?.email,
-      });
+    async signIn({ user }) {
+      const allowedEmail = process.env.ALLOWED_USER_EMAIL;
 
-      if (user.email !== config.auth.allowedUserEmail) {
-        console.log("Access denied - email mismatch");
-        return "/auth/error?error=AccessDenied";
+      if (!allowedEmail) {
+        console.error("ALLOWED_USER_EMAIL is not set in environment variables");
+        return false;
       }
+
+      if (user.email !== allowedEmail) {
+        console.error(`Access denied for ${user.email}. Only ${allowedEmail} is allowed.`);
+        return false;
+      }
+
       return true;
     },
-    async session({ session, user }) {
-      if (session.user) {
-        session.user.id = user.id;
+    async redirect({ url, baseUrl }) {
+      // Always redirect to dashboard after sign in
+      if (url.startsWith(baseUrl)) {
+        const urlObj = new URL(url);
+        if (urlObj.pathname === "/" || urlObj.pathname === "/auth/signin") {
+          return `${baseUrl}/dashboard`;
+        }
+        return url;
+      }
+      return `${baseUrl}/dashboard`;
+    },
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = user.id;
+      }
+      return token;
+    },
+    async session({ session, token }) {
+      if (session.user && token) {
+        session.user.id = token.id as string;
       }
       return session;
     },
@@ -48,5 +55,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     signIn: "/auth/signin",
     error: "/auth/error",
   },
-  debug: true,
-});
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+};

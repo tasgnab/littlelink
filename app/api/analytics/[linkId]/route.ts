@@ -1,24 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { clicks, links } from "@/lib/db/schema";
-import { eq, and, sql, gte } from "drizzle-orm";
+import { eq, and, gte, sql } from "drizzle-orm";
 
+// GET /api/analytics/[linkId] - Get analytics for a link
 export async function GET(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ linkId: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { linkId } = await params;
-    const { searchParams } = req.nextUrl;
+    const searchParams = request.nextUrl.searchParams;
     const days = parseInt(searchParams.get("days") || "30");
 
-    // Verify the link belongs to the user
+    // Verify link belongs to user
     const [link] = await db
       .select()
       .from(links)
@@ -29,73 +32,44 @@ export async function GET(
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
+    // Calculate date threshold
     const dateThreshold = new Date();
     dateThreshold.setDate(dateThreshold.getDate() - days);
 
-    // Get click data
-    const clickData = await db
+    // Get clicks data
+    const clicksData = await db
       .select()
       .from(clicks)
       .where(
         and(eq(clicks.linkId, linkId), gte(clicks.timestamp, dateThreshold))
-      );
+      )
+      .orderBy(clicks.timestamp);
 
-    // Aggregate data
-    const totalClicks = clickData.length;
+    // Aggregate statistics
+    const deviceStats = clicksData.reduce((acc: any, click) => {
+      const device = click.device || "unknown";
+      acc[device] = (acc[device] || 0) + 1;
+      return acc;
+    }, {});
 
-    const clicksByDate = clickData.reduce(
-      (acc, click) => {
-        const date = click.timestamp.toISOString().split("T")[0];
-        acc[date] = (acc[date] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
+    const browserStats = clicksData.reduce((acc: any, click) => {
+      const browser = click.browser || "unknown";
+      acc[browser] = (acc[browser] || 0) + 1;
+      return acc;
+    }, {});
 
-    const clicksByCountry = clickData.reduce(
-      (acc, click) => {
-        const country = click.country || "Unknown";
-        acc[country] = (acc[country] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-
-    const clicksByDevice = clickData.reduce(
-      (acc, click) => {
-        const device = click.device || "Unknown";
-        acc[device] = (acc[device] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-
-    const clicksByBrowser = clickData.reduce(
-      (acc, click) => {
-        const browser = click.browser || "Unknown";
-        acc[browser] = (acc[browser] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-
-    const clicksByReferer = clickData.reduce(
-      (acc, click) => {
-        const referer = click.referer || "Direct";
-        acc[referer] = (acc[referer] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
+    const osStats = clicksData.reduce((acc: any, click) => {
+      const os = click.os || "unknown";
+      acc[os] = (acc[os] || 0) + 1;
+      return acc;
+    }, {});
 
     return NextResponse.json({
-      totalClicks,
-      clicksByDate,
-      clicksByCountry,
-      clicksByDevice,
-      clicksByBrowser,
-      clicksByReferer,
-      recentClicks: clickData.slice(0, 100),
+      totalClicks: clicksData.length,
+      deviceStats,
+      browserStats,
+      osStats,
+      recentClicks: clicksData.slice(-50), // Last 50 clicks
     });
   } catch (error) {
     console.error("Error fetching analytics:", error);

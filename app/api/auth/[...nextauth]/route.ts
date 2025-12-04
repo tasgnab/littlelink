@@ -1,19 +1,6 @@
-import { handlers } from "@/lib/auth";
-import { NextRequest } from "next/server";
+import NextAuth from "next-auth";
+import { authOptions } from "@/lib/auth";
 
-export async function GET(req: NextRequest) {
-  console.log("[AUTH ROUTE] GET request:", {
-    url: req.url,
-    pathname: req.nextUrl.pathname,
-    searchParams: Object.fromEntries(req.nextUrl.searchParams),
-  });
-  return handlers.GET(req);
-}
+const handler = NextAuth(authOptions);
 
-export async function POST(req: NextRequest) {
-  console.log("[AUTH ROUTE] POST request:", {
-    url: req.url,
-    pathname: req.nextUrl.pathname,
-  });
-  return handlers.POST(req);
-}
+export { handler as GET, handler as POST };

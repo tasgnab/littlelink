@@ -1,21 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { links } from "@/lib/db/schema";
+import { links, tags, linkTags } from "@/lib/db/schema";
 import { updateLinkSchema } from "@/lib/validations";
-import { eq, and } from "drizzle-orm";
+import { eq, and, inArray } from "drizzle-orm";
 
+// GET /api/links/[id] - Get a single link with tags
 export async function GET(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
+
     const [link] = await db
       .select()
       .from(links)
@@ -26,7 +30,23 @@ export async function GET(
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ link });
+    // Get tags for this link
+    const linkTagsData = await db
+      .select({
+        id: tags.id,
+        name: tags.name,
+        color: tags.color,
+      })
+      .from(linkTags)
+      .leftJoin(tags, eq(linkTags.tagId, tags.id))
+      .where(eq(linkTags.linkId, id));
+
+    return NextResponse.json({
+      link: {
+        ...link,
+        tags: linkTagsData,
+      },
+    });
   } catch (error) {
     console.error("Error fetching link:", error);
     return NextResponse.json(
@@ -36,45 +56,108 @@ export async function GET(
   }
 }
 
+// PATCH /api/links/[id] - Update a link and its tags
 export async function PATCH(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const body = await req.json();
+    const body = await request.json();
     const validation = updateLinkSchema.safeParse(body);
 
     if (!validation.success) {
       return NextResponse.json(
-        { error: "Invalid input", details: validation.error.errors },
+        { error: validation.error.errors[0].message },
         { status: 400 }
       );
     }
 
-    const updateData = validation.data;
-    if (updateData.expiresAt !== undefined) {
-      (updateData as any).expiresAt = updateData.expiresAt
-        ? new Date(updateData.expiresAt)
-        : null;
+    const { tags: tagNames, ...linkData } = validation.data;
+
+    // Update link data
+    const updateData: any = { ...linkData, updatedAt: new Date() };
+
+    if (updateData.expiresAt) {
+      updateData.expiresAt = new Date(updateData.expiresAt);
     }
 
-    const [link] = await db
+    const [updatedLink] = await db
       .update(links)
-      .set({ ...updateData, updatedAt: new Date() })
+      .set(updateData)
       .where(and(eq(links.id, id), eq(links.userId, session.user.id)))
       .returning();
 
-    if (!link) {
+    if (!updatedLink) {
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ link });
+    // Handle tags update if provided
+    if (tagNames !== undefined) {
+      // Delete existing link-tag associations
+      await db.delete(linkTags).where(eq(linkTags.linkId, id));
+
+      // Add new tags
+      if (tagNames && tagNames.length > 0) {
+        const tagIds: string[] = [];
+
+        for (const tagName of tagNames) {
+          // Check if tag exists
+          let [tag] = await db
+            .select()
+            .from(tags)
+            .where(and(eq(tags.userId, session.user.id), eq(tags.name, tagName)))
+            .limit(1);
+
+          // Create tag if it doesn't exist
+          if (!tag) {
+            [tag] = await db
+              .insert(tags)
+              .values({
+                userId: session.user.id,
+                name: tagName,
+              })
+              .returning();
+          }
+
+          tagIds.push(tag.id);
+        }
+
+        // Create new link-tag associations
+        if (tagIds.length > 0) {
+          await db.insert(linkTags).values(
+            tagIds.map((tagId) => ({
+              linkId: id,
+              tagId,
+            }))
+          );
+        }
+      }
+    }
+
+    // Fetch tags for response
+    const linkTagsData = await db
+      .select({
+        id: tags.id,
+        name: tags.name,
+        color: tags.color,
+      })
+      .from(linkTags)
+      .leftJoin(tags, eq(linkTags.tagId, tags.id))
+      .where(eq(linkTags.linkId, id));
+
+    return NextResponse.json({
+      link: {
+        ...updatedLink,
+        tags: linkTagsData,
+      },
+    });
   } catch (error) {
     console.error("Error updating link:", error);
     return NextResponse.json(
@@ -84,27 +167,30 @@ export async function PATCH(
   }
 }
 
+// DELETE /api/links/[id] - Delete a link
 export async function DELETE(
-  req: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await auth();
+    const session = await getServerSession(authOptions);
+
     if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { id } = await params;
-    const [link] = await db
+
+    const [deletedLink] = await db
       .delete(links)
       .where(and(eq(links.id, id), eq(links.userId, session.user.id)))
       .returning();
 
-    if (!link) {
+    if (!deletedLink) {
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ message: "Link deleted successfully" });
+    return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Error deleting link:", error);
     return NextResponse.json(
