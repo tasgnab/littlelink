@@ -9,15 +9,15 @@ export default function SignIn() {
   const error = searchParams.get("error");
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500">
-      <div className="bg-white p-8 rounded-lg shadow-2xl max-w-md w-full">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-purple-500 to-pink-500 dark:from-purple-900 dark:to-pink-900">
+      <div className="bg-white dark:bg-gray-800 p-8 rounded-lg shadow-2xl max-w-md w-full">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-800 mb-2">LittleLink</h1>
-          <p className="text-gray-600">URL Shortener</p>
+          <h1 className="text-4xl font-bold text-gray-800 dark:text-white mb-2">LittleLink</h1>
+          <p className="text-gray-600 dark:text-gray-300">URL Shortener</p>
         </div>
 
         {error && (
-          <div className="mb-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded">
+          <div className="mb-4 p-4 bg-red-100 dark:bg-red-900/30 border border-red-400 dark:border-red-800 text-red-700 dark:text-red-200 rounded">
             {error === "AccessDenied"
               ? "You are not authorized to access this application."
               : "An error occurred during sign in. Please try again."}
@@ -27,7 +27,7 @@ export default function SignIn() {
         <div className="space-y-4">
           <button
             onClick={() => signIn("google", { callbackUrl })}
-            className="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-300 text-gray-700 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 hover:border-gray-400 transition-all duration-200 shadow-md"
+            className="w-full flex items-center justify-center gap-3 bg-white dark:bg-gray-700 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 px-6 py-3 rounded-lg font-semibold hover:bg-gray-50 dark:hover:bg-gray-600 hover:border-gray-400 dark:hover:border-gray-500 transition-all duration-200 shadow-md"
           >
             <svg className="w-6 h-6" viewBox="0 0 24 24">
               <path
@@ -51,7 +51,7 @@ export default function SignIn() {
           </button>
         </div>
 
-        <p className="mt-6 text-center text-sm text-gray-500">
+        <p className="mt-6 text-center text-sm text-gray-500 dark:text-gray-400">
           Only authorized users can access this application.
         </p>
       </div>

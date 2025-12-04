@@ -35,17 +35,17 @@ export default function Stats() {
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Total Links</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Links</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
               {loading ? "..." : totalLinks}
             </p>
           </div>
-          <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
             <svg
-              className="w-6 h-6 text-blue-600"
+              className="w-6 h-6 text-blue-600 dark:text-blue-300"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -61,17 +61,17 @@ export default function Stats() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Total Clicks</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Total Clicks</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
               {loading ? "..." : totalClicks}
             </p>
           </div>
-          <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
             <svg
-              className="w-6 h-6 text-purple-600"
+              className="w-6 h-6 text-purple-600 dark:text-purple-300"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -93,17 +93,17 @@ export default function Stats() {
         </div>
       </div>
 
-      <div className="bg-white border border-gray-200 rounded-lg p-5">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-5">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-500">Active Links</p>
-            <p className="text-2xl font-bold text-gray-900 mt-1">
+            <p className="text-sm font-medium text-gray-500 dark:text-gray-400">Active Links</p>
+            <p className="text-2xl font-bold text-gray-900 dark:text-white mt-1">
               {loading ? "..." : activeLinks}
             </p>
           </div>
-          <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+          <div className="w-12 h-12 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
             <svg
-              className="w-6 h-6 text-green-600"
+              className="w-6 h-6 text-green-600 dark:text-green-300"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"

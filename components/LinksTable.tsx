@@ -87,12 +87,12 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
   };
 
   if (loading) {
-    return <div className="text-center py-12 text-gray-500">Loading...</div>;
+    return <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading...</div>;
   }
 
   if (links.length === 0) {
     return (
-      <div className="text-center py-12 text-gray-500">
+      <div className="text-center py-12 text-gray-500 dark:text-gray-400">
         {selectedTag ? `No links with tag "${selectedTag}"` : "No links yet"}
       </div>
     );
@@ -100,43 +100,43 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
 
   return (
     <>
-      <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
+      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
+            <thead className="bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Short URL
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Original URL
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Tags
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Clicks
                 </th>
-                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Status
                 </th>
-                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
                   Actions
                 </th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-200">
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
               {links.map((link) => (
-                <tr key={link.id} className="hover:bg-gray-50">
+                <tr key={link.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => copyToClipboard(link.shortCode)}
-                        className="text-blue-600 hover:text-blue-700 font-medium text-sm flex items-center gap-1"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium text-sm flex items-center gap-2"
                       >
                         /{link.shortCode}
                         {copied === link.shortCode ? (
-                          <svg className="w-4 h-4 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="w-4 h-4 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
                         ) : (
@@ -147,7 +147,7 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
                       </button>
                     </div>
                     {link.title && (
-                      <div className="text-xs text-gray-500 mt-0.5">{link.title}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{link.title}</div>
                     )}
                   </td>
                   <td className="px-4 py-3">
@@ -155,7 +155,7 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
                       href={link.originalUrl}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-sm text-gray-600 hover:text-gray-900 truncate max-w-md block"
+                      className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white truncate max-w-md block"
                     >
                       {link.originalUrl}
                     </a>
@@ -177,15 +177,15 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
                     </div>
                   </td>
                   <td className="px-4 py-3 text-center">
-                    <span className="text-sm font-medium text-gray-900">{link.clicks}</span>
+                    <span className="text-sm font-medium text-gray-900 dark:text-white">{link.clicks}</span>
                   </td>
                   <td className="px-4 py-3 text-center">
                     <button
                       onClick={() => toggleActive(link.id, link.isActive)}
                       className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                         link.isActive
-                          ? "bg-green-100 text-green-800"
-                          : "bg-gray-100 text-gray-800"
+                          ? "bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200"
+                          : "bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300"
                       }`}
                     >
                       {link.isActive ? "Active" : "Inactive"}
@@ -195,13 +195,13 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
                     <div className="flex items-center justify-end gap-3">
                       <button
                         onClick={() => setEditingLink(link)}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => deleteLink(link.id)}
-                        className="text-red-600 hover:text-red-700 text-sm font-medium"
+                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium"
                       >
                         Delete
                       </button>

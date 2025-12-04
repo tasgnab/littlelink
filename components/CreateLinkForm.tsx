@@ -94,8 +94,8 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-6 mb-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-6 mb-6">
+      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
         Create Short Link
       </h2>
 
@@ -103,7 +103,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
         <div>
           <label
             htmlFor="url"
-            className="block text-sm font-medium text-gray-700 mb-1.5"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
           >
             Long URL *
           </label>
@@ -114,7 +114,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
             onChange={(e) => setUrl(e.target.value)}
             placeholder="https://example.com/very-long-url"
             required
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm"
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400"
           />
         </div>
 
@@ -122,7 +122,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
           <div>
             <label
               htmlFor="shortCode"
-              className="block text-sm font-medium text-gray-700 mb-1.5"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
             >
               Custom short code (optional)
             </label>
@@ -133,14 +133,14 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
               onChange={(e) => setShortCode(e.target.value)}
               placeholder="my-link"
               pattern="[a-zA-Z0-9_-]+"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400"
             />
           </div>
 
           <div>
             <label
               htmlFor="title"
-              className="block text-sm font-medium text-gray-700 mb-1.5"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
             >
               Title (optional)
             </label>
@@ -150,7 +150,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="My Link"
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400"
             />
           </div>
         </div>
@@ -158,7 +158,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
         <div>
           <label
             htmlFor="tags"
-            className="block text-sm font-medium text-gray-700 mb-1.5"
+            className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
           >
             Tags
           </label>
@@ -166,13 +166,13 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
             {selectedTags.map((tag) => (
               <span
                 key={tag}
-                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded"
+                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium rounded"
               >
                 {tag}
                 <button
                   type="button"
                   onClick={() => handleRemoveTag(tag)}
-                  className="hover:text-blue-900"
+                  className="hover:text-blue-900 dark:hover:text-blue-100"
                 >
                   ×
                 </button>
@@ -192,19 +192,19 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
                 }
               }}
               placeholder="Type tag and press Enter"
-              className="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 text-sm"
+              className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400"
             />
             <button
               type="button"
               onClick={() => handleAddTag(tagInput)}
-              className="px-4 py-2 bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 text-sm font-medium"
+              className="px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium"
             >
               Add
             </button>
           </div>
           {availableTags.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-2">
-              <span className="text-xs text-gray-500">Quick add:</span>
+              <span className="text-xs text-gray-500 dark:text-gray-400">Quick add:</span>
               {availableTags
                 .filter((t) => !selectedTags.includes(t.name))
                 .slice(0, 5)
@@ -213,7 +213,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
                     key={tag.id}
                     type="button"
                     onClick={() => handleAddTag(tag.name)}
-                    className="text-xs px-2 py-1 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 border border-gray-200"
+                    className="text-xs px-2 py-1 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
                   >
                     {tag.name}
                   </button>
@@ -223,13 +223,13 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
         </div>
 
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-md text-sm">
+          <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 rounded-md text-sm">
             {error}
           </div>
         )}
 
         {success && (
-          <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-md text-sm">
+          <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 text-green-700 dark:text-green-200 rounded-md text-sm">
             {success}
           </div>
         )}
