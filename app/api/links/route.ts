@@ -1,20 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { links, tags, linkTags } from "@/lib/db/schema";
 import { createLinkSchema, bulkDeleteSchema } from "@/lib/validations";
 import { generateUniqueShortCode } from "@/lib/utils";
 import { eq, desc, inArray, and, sql } from "drizzle-orm";
+import { requireReadAuth, requireWriteAuth } from "@/lib/api-auth";
 
 // GET /api/links - List all links with tags
+// Supports both session and API key authentication (read-only)
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireReadAuth(request);
+    if (auth instanceof Response) return auth;
 
     const searchParams = request.nextUrl.searchParams;
     const limit = parseInt(searchParams.get("limit") || "50");
@@ -37,7 +34,7 @@ export async function GET(request: NextRequest) {
         updatedAt: links.updatedAt,
       })
       .from(links)
-      .where(eq(links.userId, session.user.id))
+      .where(eq(links.userId, auth.userId))
       .$dynamic();
 
     // Get links
@@ -94,13 +91,11 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/links - Create a new link with tags
+// Requires session authentication (write access)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireWriteAuth(request);
+    if (auth instanceof Response) return auth;
 
     const body = await request.json();
     const validation = createLinkSchema.safeParse(body);
@@ -141,7 +136,7 @@ export async function POST(request: NextRequest) {
     const [newLink] = await db
       .insert(links)
       .values({
-        userId: session.user.id,
+        userId: auth.userId,
         shortCode: finalShortCode,
         originalUrl: url,
         title: title || null,
@@ -160,7 +155,7 @@ export async function POST(request: NextRequest) {
         let [tag] = await db
           .select()
           .from(tags)
-          .where(and(eq(tags.userId, session.user.id), eq(tags.name, tagName)))
+          .where(and(eq(tags.userId, auth.userId), eq(tags.name, tagName)))
           .limit(1);
 
         // Create tag if it doesn't exist
@@ -168,7 +163,7 @@ export async function POST(request: NextRequest) {
           [tag] = await db
             .insert(tags)
             .values({
-              userId: session.user.id,
+              userId: auth.userId,
               name: tagName,
             })
             .returning();
@@ -227,13 +222,11 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/links - Bulk delete links
+// Requires session authentication (write access)
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireWriteAuth(request);
+    if (auth instanceof Response) return auth;
 
     const body = await request.json();
     const validation = bulkDeleteSchema.safeParse(body);
@@ -251,7 +244,7 @@ export async function DELETE(request: NextRequest) {
     await db
       .delete(links)
       .where(
-        and(eq(links.userId, session.user.id), inArray(links.id, linkIds))
+        and(eq(links.userId, auth.userId), inArray(links.id, linkIds))
       );
 
     return NextResponse.json({ success: true });

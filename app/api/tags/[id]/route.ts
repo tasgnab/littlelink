@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { tags } from "@/lib/db/schema";
 import { updateTagSchema } from "@/lib/validations";
 import { eq, and } from "drizzle-orm";
+import { requireWriteAuth } from "@/lib/api-auth";
 
 // PATCH /api/tags/[id] - Update a tag
+// Requires session authentication (write access)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireWriteAuth(request);
+    if (auth instanceof Response) return auth;
 
     const { id } = await params;
     const body = await request.json();
@@ -32,7 +29,7 @@ export async function PATCH(
     const [updatedTag] = await db
       .update(tags)
       .set(validation.data)
-      .where(and(eq(tags.id, id), eq(tags.userId, session.user.id)))
+      .where(and(eq(tags.id, id), eq(tags.userId, auth.userId)))
       .returning();
 
     if (!updatedTag) {
@@ -50,22 +47,20 @@ export async function PATCH(
 }
 
 // DELETE /api/tags/[id] - Delete a tag
+// Requires session authentication (write access)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireWriteAuth(request);
+    if (auth instanceof Response) return auth;
 
     const { id } = await params;
 
     const [deletedTag] = await db
       .delete(tags)
-      .where(and(eq(tags.id, id), eq(tags.userId, session.user.id)))
+      .where(and(eq(tags.id, id), eq(tags.userId, auth.userId)))
       .returning();
 
     if (!deletedTag) {

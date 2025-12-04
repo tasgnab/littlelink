@@ -1,29 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { links, tags, linkTags } from "@/lib/db/schema";
 import { updateLinkSchema } from "@/lib/validations";
 import { eq, and, inArray } from "drizzle-orm";
+import { requireReadAuth, requireWriteAuth } from "@/lib/api-auth";
 
 // GET /api/links/[id] - Get a single link with tags
+// Supports both session and API key authentication (read-only)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireReadAuth(request);
+    if (auth instanceof Response) return auth;
 
     const { id } = await params;
 
     const [link] = await db
       .select()
       .from(links)
-      .where(and(eq(links.id, id), eq(links.userId, session.user.id)))
+      .where(and(eq(links.id, id), eq(links.userId, auth.userId)))
       .limit(1);
 
     if (!link) {
@@ -57,16 +54,14 @@ export async function GET(
 }
 
 // PATCH /api/links/[id] - Update a link and its tags
+// Requires session authentication (write access)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireWriteAuth(request);
+    if (auth instanceof Response) return auth;
 
     const { id } = await params;
     const body = await request.json();
@@ -91,7 +86,7 @@ export async function PATCH(
     const [updatedLink] = await db
       .update(links)
       .set(updateData)
-      .where(and(eq(links.id, id), eq(links.userId, session.user.id)))
+      .where(and(eq(links.id, id), eq(links.userId, auth.userId)))
       .returning();
 
     if (!updatedLink) {
@@ -112,7 +107,7 @@ export async function PATCH(
           let [tag] = await db
             .select()
             .from(tags)
-            .where(and(eq(tags.userId, session.user.id), eq(tags.name, tagName)))
+            .where(and(eq(tags.userId, auth.userId), eq(tags.name, tagName)))
             .limit(1);
 
           // Create tag if it doesn't exist
@@ -120,7 +115,7 @@ export async function PATCH(
             [tag] = await db
               .insert(tags)
               .values({
-                userId: session.user.id,
+                userId: auth.userId,
                 name: tagName,
               })
               .returning();
@@ -168,22 +163,20 @@ export async function PATCH(
 }
 
 // DELETE /api/links/[id] - Delete a link
+// Requires session authentication (write access)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireWriteAuth(request);
+    if (auth instanceof Response) return auth;
 
     const { id } = await params;
 
     const [deletedLink] = await db
       .delete(links)
-      .where(and(eq(links.id, id), eq(links.userId, session.user.id)))
+      .where(and(eq(links.id, id), eq(links.userId, auth.userId)))
       .returning();
 
     if (!deletedLink) {

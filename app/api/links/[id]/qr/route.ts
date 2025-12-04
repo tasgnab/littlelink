@@ -1,29 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { links } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import QRCode from "qrcode";
+import { requireReadAuth } from "@/lib/api-auth";
 
 // GET /api/links/[id]/qr - Generate QR code for a link
+// Supports both session and API key authentication (read-only)
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const session = await getServerSession(authOptions);
-
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
+    const auth = await requireReadAuth(request);
+    if (auth instanceof Response) return auth;
 
     const { id } = await params;
 
     const [link] = await db
       .select()
       .from(links)
-      .where(and(eq(links.id, id), eq(links.userId, session.user.id)))
+      .where(and(eq(links.id, id), eq(links.userId, auth.userId)))
       .limit(1);
 
     if (!link) {

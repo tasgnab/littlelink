@@ -34,7 +34,7 @@ npm run lint         # Run ESLint
 ### Authentication Flow
 - **Single-user system**: Only the email specified in `ALLOWED_USER_EMAIL` environment variable can sign in
 - **Authentication check**: Enforced in `lib/auth.ts` via NextAuth `signIn` callback
-- **Route protection**: Middleware (`middleware.ts`) protects all routes except:
+- **Route protection**: Proxy (`proxy.ts`) protects all routes except:
   - `/auth/*` (auth pages)
   - `/api/auth/*` (auth API)
   - `/:shortCode` (public redirect endpoints)
@@ -42,13 +42,33 @@ npm run lint         # Run ESLint
 - **Session strategy**: JWT-based with 30-day expiration
 - **Post-login redirect**: Always redirects to `/dashboard` after successful authentication
 
+### API Authentication (lib/api-auth.ts)
+Two authentication methods are supported for API endpoints:
+
+1. **Session Authentication** (Full Access)
+   - Uses NextAuth session cookies
+   - Provides read and write access to all API endpoints
+   - Required for POST, PATCH, DELETE operations
+
+2. **API Key Authentication** (Read-Only Access)
+   - API keys are prefixed with `sk_` and 32 characters long
+   - Passed via `Authorization` header: `Authorization: Bearer sk_xxx` or `Authorization: sk_xxx`
+   - **Read-only access**: Only GET endpoints accept API keys
+   - Write operations (POST/PATCH/DELETE) return 403 if attempted with API key
+   - Last used timestamp is updated automatically (fire-and-forget)
+
+API keys are managed via:
+- `GET /api/api-keys` - List all API keys (session only, keys are hidden)
+- `POST /api/api-keys` - Create new API key (session only, key shown only once)
+- `DELETE /api/api-keys?id=[id]` - Delete API key (session only)
+
 ### Database Schema (lib/db/schema.ts)
 - **users, accounts, sessions, verificationTokens**: NextAuth tables
 - **links**: Core short link mappings with `shortCode` (unique, indexed), `originalUrl`, `clicks` counter, `isActive` flag, optional `expiresAt`
 - **clicks**: Detailed analytics per click (timestamp, referer, user agent, device/browser/os parsing, IP, geo data)
 - **tags**: User-created tags with name and color
 - **linkTags**: Many-to-many junction table between links and tags
-- **apiKeys**: Prepared for future API key authentication (not yet implemented)
+- **apiKeys**: API key storage (user-scoped, stores hashed key, name, and lastUsed timestamp)
 
 All tables use UUID primary keys and proper foreign key cascades.
 
@@ -71,18 +91,29 @@ This pattern ensures fast redirects while still capturing detailed analytics.
 - **TagsSidebar.tsx**: Tag management and filtering interface
 
 ### API Routes
-All API routes require authentication (checked by middleware) except redirect handler:
-- `POST /api/links` - Create link (validates with `createLinkSchema`)
-- `GET /api/links` - List all user's links (with optional tag filtering)
-- `GET /api/links/[id]` - Get single link
-- `PATCH /api/links/[id]` - Update link (validates with `updateLinkSchema`)
-- `DELETE /api/links/[id]` - Delete link (cascades to clicks and linkTags)
-- `GET /api/links/[id]/qr` - Generate QR code as PNG
-- `GET /api/analytics/[linkId]` - Get detailed click analytics
-- `GET /api/tags` - List all tags
-- `POST /api/tags` - Create tag
-- `PATCH /api/tags/[id]` - Update tag
-- `DELETE /api/tags/[id]` - Delete tag (cascades to linkTags)
+All API routes require authentication except redirect handler. Read-only endpoints support both session and API key auth:
+
+**Links:**
+- `GET /api/links` - List all user's links (supports API key)
+- `POST /api/links` - Create link (session only, validates with `createLinkSchema`)
+- `GET /api/links/[id]` - Get single link (supports API key)
+- `PATCH /api/links/[id]` - Update link (session only, validates with `updateLinkSchema`)
+- `DELETE /api/links/[id]` - Delete link (session only, cascades to clicks and linkTags)
+- `GET /api/links/[id]/qr` - Generate QR code (supports API key)
+
+**Analytics:**
+- `GET /api/analytics/[linkId]` - Get detailed click analytics (supports API key)
+
+**Tags:**
+- `GET /api/tags` - List all tags (supports API key)
+- `POST /api/tags` - Create tag (session only)
+- `PATCH /api/tags/[id]` - Update tag (session only)
+- `DELETE /api/tags/[id]` - Delete tag (session only, cascades to linkTags)
+
+**API Keys:**
+- `GET /api/api-keys` - List API keys (session only)
+- `POST /api/api-keys` - Create API key (session only)
+- `DELETE /api/api-keys?id=[id]` - Delete API key (session only)
 
 ### Validation (lib/validations.ts)
 All schemas use Zod:
@@ -123,10 +154,27 @@ Required in `.env`:
 - Tag filtering in dashboard via query parameter: `/dashboard?tag=<tagId>`
 - Tags can be assigned during link creation or via edit modal
 
-## Testing the Redirect Flow
+## Testing
 
-To test link redirects locally:
+### Testing the Redirect Flow
 1. Create a link in the dashboard (e.g., shortCode "test")
 2. Visit `http://localhost:3000/test`
 3. Should redirect to original URL and track click in database
 4. Check analytics in dashboard to verify click was recorded with device/browser/OS data
+
+### Testing API Key Authentication
+1. Create an API key via dashboard or `POST /api/api-keys` with body: `{"name": "Test Key"}`
+2. Copy the returned API key (starts with `sk_`, only shown once)
+3. Test read access (should work):
+   ```bash
+   curl -H "Authorization: Bearer sk_xxx" http://localhost:3000/api/links
+   curl -H "Authorization: sk_xxx" http://localhost:3000/api/tags
+   ```
+4. Test write access (should return 403):
+   ```bash
+   curl -X POST -H "Authorization: Bearer sk_xxx" \
+     -H "Content-Type: application/json" \
+     -d '{"url":"https://example.com"}' \
+     http://localhost:3000/api/links
+   # Expected: {"error":"API keys have read-only access..."}
+   ```
