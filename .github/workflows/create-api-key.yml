@@ -1,0 +1,84 @@
+name: Create API Key
+
+on:
+  workflow_dispatch:
+    inputs:
+      user_email:
+        description: 'Email of the user to create API key for'
+        required: true
+        type: string
+      key_name:
+        description: 'Name for the API key'
+        required: false
+        default: 'GitHub Actions Key'
+        type: string
+      environment:
+        description: 'GitHub environment to use (for environment-specific secrets)'
+        required: false
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - staging
+          - development
+
+jobs:
+  create-api-key:
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create API Key
+        id: create_key
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "Creating API key for user: ${{ github.event.inputs.user_email }}"
+
+          # Run the script and capture output
+          OUTPUT=$(node scripts/create-api-key.mjs "${{ github.event.inputs.user_email }}" "${{ github.event.inputs.key_name }}")
+
+          # Extract the API key from output (the line after "Key:")
+          API_KEY=$(echo "$OUTPUT" | grep "^Key:" | awk '{print $2}')
+
+          # Print full output
+          echo "$OUTPUT"
+
+          # Mask the API key in logs
+          echo "::add-mask::$API_KEY"
+
+          # Set as output for potential use in other steps
+          echo "api_key=$API_KEY" >> $GITHUB_OUTPUT
+
+      - name: Create summary
+        run: |
+          echo "## ✅ API Key Created Successfully" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**User Email:** ${{ github.event.inputs.user_email }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Key Name:** ${{ github.event.inputs.key_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Important:** The API key has been created and is visible in the logs above." >> $GITHUB_STEP_SUMMARY
+          echo "Make sure to copy it securely - it will not be shown again!" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Usage Example" >> $GITHUB_STEP_SUMMARY
+          echo '```bash' >> $GITHUB_STEP_SUMMARY
+          echo 'curl -H "Authorization: Bearer YOUR_API_KEY" https://your-domain.com/api/links' >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+      - name: Security reminder
+        run: |
+          echo "::notice title=API Key Created::API key has been generated. Check the logs above to retrieve it."
+          echo "::warning title=Security Notice::This API key provides read-only access to your links and analytics. Store it securely and never commit it to your repository."

@@ -27,6 +27,9 @@ npm run db:studio    # Open Drizzle Studio GUI
 npm run build        # Build for production
 npm start            # Start production server
 npm run lint         # Run ESLint
+
+# API Key Management
+npm run create-api-key <email> <keyName>  # Create API key locally
 ```
 
 ## Architecture
@@ -178,3 +181,27 @@ Required in `.env`:
      http://localhost:3000/api/links
    # Expected: {"error":"API keys have read-only access..."}
    ```
+
+## GitHub Workflows
+
+### Create API Key Workflow
+
+The repository includes a GitHub Actions workflow for creating API keys programmatically.
+
+**Setup:**
+1. Add `DATABASE_URL` secret in GitHub repository settings
+2. Optionally configure environments (production, staging, development) with environment-specific DATABASE_URL secrets
+
+**Usage:**
+- Navigate to Actions → Create API Key → Run workflow
+- Provide user email and key name
+- Select environment
+- API key will be shown in workflow logs (copy immediately)
+
+**Local usage:**
+```bash
+export DATABASE_URL="your-postgres-connection-string"
+npm run create-api-key your-email@example.com "My API Key"
+```
+
+See `.github/workflows/README.md` for detailed documentation and troubleshooting.
