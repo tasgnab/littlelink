@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import EditLinkModal from "./EditLinkModal";
+import { getAppUrl } from "@/lib/config";
 
 interface Tag {
   id: string;
@@ -52,8 +53,7 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
   };
 
   const copyToClipboard = async (shortCode: string) => {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-    const url = `${appUrl}/${shortCode}`;
+    const url = `${getAppUrl()}/${shortCode}`;
     try {
       await navigator.clipboard.writeText(url);
       setCopied(shortCode);

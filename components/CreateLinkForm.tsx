@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { getAppUrl } from "@/lib/config";
 
 interface CreateLinkFormProps {
   onLinkCreated: () => void;
@@ -75,9 +76,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
         throw new Error(data.error || "Failed to create link");
       }
 
-      const appUrl =
-        process.env.NEXT_PUBLIC_APP_URL || window.location.origin;
-      const shortUrl = `${appUrl}/${data.link.shortCode}`;
+      const shortUrl = `${getAppUrl()}/${data.link.shortCode}`;
 
       setSuccess(`Link created: ${shortUrl}`);
       setUrl("");

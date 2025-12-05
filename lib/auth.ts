@@ -2,26 +2,20 @@ import { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 import { DrizzleAdapter } from "@auth/drizzle-adapter";
 import { db } from "@/lib/db";
+import { config } from "@/lib/config";
 
 export const authOptions: NextAuthOptions = {
   adapter: DrizzleAdapter(db) as any,
   providers: [
     GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+      clientId: config.auth.googleClientId,
+      clientSecret: config.auth.googleClientSecret,
     }),
   ],
   callbacks: {
     async signIn({ user }) {
-      const allowedEmail = process.env.ALLOWED_USER_EMAIL;
-
-      if (!allowedEmail) {
-        console.error("ALLOWED_USER_EMAIL is not set in environment variables");
-        return false;
-      }
-
-      if (user.email !== allowedEmail) {
-        console.error(`Access denied for ${user.email}. Only ${allowedEmail} is allowed.`);
+      if (user.email !== config.auth.allowedUserEmail) {
+        console.error(`Access denied for ${user.email}. Only ${config.auth.allowedUserEmail} is allowed.`);
         return false;
       }
 

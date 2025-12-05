@@ -5,6 +5,7 @@ import { eq, and } from "drizzle-orm";
 import QRCode from "qrcode";
 import { requireReadAuth } from "@/lib/api-auth";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
+import { config } from "@/lib/config";
 
 // GET /api/links/[id]/qr - Generate QR code for a link
 // Supports both session and API key authentication (read-only)
@@ -28,8 +29,7 @@ async function getHandler(
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const shortUrl = `${appUrl}/${link.shortCode}`;
+    const shortUrl = `${config.app.url}/${link.shortCode}`;
 
     // Generate QR code as data URL
     const qrCodeDataUrl = await QRCode.toDataURL(shortUrl, {

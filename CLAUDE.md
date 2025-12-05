@@ -34,6 +34,35 @@ npm run create-api-key <email> <keyName>  # Create API key locally
 
 ## Architecture
 
+### Configuration (lib/config.ts)
+All environment variable access is centralized in `lib/config.ts` for:
+- **Type safety**: Typed configuration objects with validation
+- **Required validation**: Throws clear errors if required env vars are missing
+- **Format validation**: Validates email and URL formats
+- **Server/Client separation**: Separate configs for server-only and public variables
+
+**Server-side config** (via `config` export):
+- `config.database.url` - PostgreSQL connection string
+- `config.auth.nextAuthUrl` - NextAuth callback URL
+- `config.auth.nextAuthSecret` - JWT signing secret
+- `config.auth.googleClientId` - Google OAuth client ID
+- `config.auth.googleClientSecret` - Google OAuth client secret
+- `config.auth.allowedUserEmail` - Single user email (validated)
+- `config.app.url` - App URL for server operations
+
+**Client-side config** (via `getAppUrl()` helper):
+- `getAppUrl()` - Returns app URL (works on both client and server, falls back to window.location.origin on client)
+
+**Important**: Always use the config exports instead of directly accessing `process.env`:
+```typescript
+// ✅ Correct
+import { config } from "@/lib/config";
+const dbUrl = config.database.url;
+
+// ❌ Wrong
+const dbUrl = process.env.DATABASE_URL;
+```
+
 ### Authentication Flow
 - **Single-user system**: Only the email specified in `ALLOWED_USER_EMAIL` environment variable can sign in
 - **Authentication check**: Enforced in `lib/auth.ts` via NextAuth `signIn` callback
