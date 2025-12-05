@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { links, tags, linkTags } from "@/lib/db/schema";
 import { updateLinkSchema } from "@/lib/validations";
-import { eq, and, inArray } from "drizzle-orm";
 import { requireReadAuth, requireWriteAuth } from "@/lib/api-auth";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
+import * as linksService from "@/lib/services/links";
 
 // GET /api/links/[id] - Get a single link with tags
 // Supports both session and API key authentication (read-only)
@@ -18,33 +16,13 @@ async function getHandler(
 
     const { id } = await params;
 
-    const [link] = await db
-      .select()
-      .from(links)
-      .where(and(eq(links.id, id), eq(links.userId, auth.userId)))
-      .limit(1);
+    const link = await linksService.getLink(id, auth.userId);
 
     if (!link) {
       return NextResponse.json({ error: "Link not found" }, { status: 404 });
     }
 
-    // Get tags for this link
-    const linkTagsData = await db
-      .select({
-        id: tags.id,
-        name: tags.name,
-        color: tags.color,
-      })
-      .from(linkTags)
-      .leftJoin(tags, eq(linkTags.tagId, tags.id))
-      .where(eq(linkTags.linkId, id));
-
-    return NextResponse.json({
-      link: {
-        ...link,
-        tags: linkTagsData,
-      },
-    });
+    return NextResponse.json({ link });
   } catch (error) {
     console.error("Error fetching link:", error);
     return NextResponse.json(
@@ -75,87 +53,25 @@ async function patchHandler(
       );
     }
 
-    const { tags: tagNames, ...linkData } = validation.data;
+    const { tags: tagNames, expiresAt, ...linkData } = validation.data;
 
-    // Update link data
-    const updateData: any = { ...linkData, updatedAt: new Date() };
-
-    if (updateData.expiresAt) {
-      updateData.expiresAt = new Date(updateData.expiresAt);
-    }
-
-    const [updatedLink] = await db
-      .update(links)
-      .set(updateData)
-      .where(and(eq(links.id, id), eq(links.userId, auth.userId)))
-      .returning();
-
-    if (!updatedLink) {
-      return NextResponse.json({ error: "Link not found" }, { status: 404 });
-    }
-
-    // Handle tags update if provided
-    if (tagNames !== undefined) {
-      // Delete existing link-tag associations
-      await db.delete(linkTags).where(eq(linkTags.linkId, id));
-
-      // Add new tags
-      if (tagNames && tagNames.length > 0) {
-        const tagIds: string[] = [];
-
-        for (const tagName of tagNames) {
-          // Check if tag exists
-          let [tag] = await db
-            .select()
-            .from(tags)
-            .where(and(eq(tags.userId, auth.userId), eq(tags.name, tagName)))
-            .limit(1);
-
-          // Create tag if it doesn't exist
-          if (!tag) {
-            [tag] = await db
-              .insert(tags)
-              .values({
-                userId: auth.userId,
-                name: tagName,
-              })
-              .returning();
-          }
-
-          tagIds.push(tag.id);
-        }
-
-        // Create new link-tag associations
-        if (tagIds.length > 0) {
-          await db.insert(linkTags).values(
-            tagIds.map((tagId) => ({
-              linkId: id,
-              tagId,
-            }))
-          );
-        }
-      }
-    }
-
-    // Fetch tags for response
-    const linkTagsData = await db
-      .select({
-        id: tags.id,
-        name: tags.name,
-        color: tags.color,
-      })
-      .from(linkTags)
-      .leftJoin(tags, eq(linkTags.tagId, tags.id))
-      .where(eq(linkTags.linkId, id));
-
-    return NextResponse.json({
-      link: {
-        ...updatedLink,
-        tags: linkTagsData,
-      },
+    const link = await linksService.updateLink(id, auth.userId, {
+      ...linkData,
+      expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      tags: tagNames,
     });
-  } catch (error) {
+
+    return NextResponse.json({ link });
+  } catch (error: any) {
     console.error("Error updating link:", error);
+
+    if (error.message === "Link not found") {
+      return NextResponse.json(
+        { error: error.message },
+        { status: 404 }
+      );
+    }
+
     return NextResponse.json(
       { error: "Failed to update link" },
       { status: 500 }
@@ -175,14 +91,7 @@ async function deleteHandler(
 
     const { id } = await params;
 
-    const [deletedLink] = await db
-      .delete(links)
-      .where(and(eq(links.id, id), eq(links.userId, auth.userId)))
-      .returning();
-
-    if (!deletedLink) {
-      return NextResponse.json({ error: "Link not found" }, { status: 404 });
-    }
+    await linksService.deleteLink(id, auth.userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

@@ -31,20 +31,38 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
   const [editingLink, setEditingLink] = useState<Link | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalLinks, setTotalLinks] = useState(0);
+  const pageSize = 10;
+
+  const totalPages = Math.ceil(totalLinks / pageSize);
 
   useEffect(() => {
     fetchLinks();
-  }, [refreshTrigger, selectedTag]);
+  }, [refreshTrigger, selectedTag, currentPage]);
+
+  useEffect(() => {
+    // Reset to page 1 when tag filter changes
+    setCurrentPage(1);
+  }, [selectedTag]);
 
   const fetchLinks = async () => {
     try {
       setLoading(true);
-      const url = selectedTag
-        ? `/api/links?tag=${encodeURIComponent(selectedTag)}`
-        : "/api/links";
-      const response = await fetch(url);
+      const offset = (currentPage - 1) * pageSize;
+      const params = new URLSearchParams({
+        limit: pageSize.toString(),
+        offset: offset.toString(),
+      });
+
+      if (selectedTag) {
+        params.append("tag", selectedTag);
+      }
+
+      const response = await fetch(`/api/links?${params}`);
       const data = await response.json();
       setLinks(data.links);
+      setTotalLinks(data.total || 0);
     } catch (err) {
       console.error("Failed to fetch links:", err);
     } finally {
@@ -118,6 +136,12 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
       </div>
     );
   }
+
+  const goToPage = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
+    }
+  };
 
   return (
     <>
@@ -241,6 +265,72 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Controls */}
+        {totalPages > 1 && (
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, totalLinks)} of {totalLinks} links
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => goToPage(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+                  // Show first page, last page, current page, and pages around current
+                  const showPage =
+                    page === 1 ||
+                    page === totalPages ||
+                    (page >= currentPage - 1 && page <= currentPage + 1);
+
+                  const showEllipsis =
+                    (page === currentPage - 2 && currentPage > 3) ||
+                    (page === currentPage + 2 && currentPage < totalPages - 2);
+
+                  if (showEllipsis) {
+                    return (
+                      <span key={page} className="px-2 text-gray-500 dark:text-gray-400">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  if (!showPage) {
+                    return null;
+                  }
+
+                  return (
+                    <button
+                      key={page}
+                      onClick={() => goToPage(page)}
+                      className={`px-3 py-1 text-sm font-medium rounded-md ${
+                        currentPage === page
+                          ? "bg-blue-600 text-white"
+                          : "text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600"
+                      }`}
+                    >
+                      {page}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={() => goToPage(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {editingLink && (

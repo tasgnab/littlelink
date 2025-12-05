@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { links, tags, linkTags } from "@/lib/db/schema";
 import { createLinkSchema, bulkDeleteSchema } from "@/lib/validations";
-import { generateUniqueShortCode } from "@/lib/utils";
-import { eq, desc, inArray, and, sql } from "drizzle-orm";
 import { requireReadAuth, requireWriteAuth } from "@/lib/api-auth";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
+import * as linksService from "@/lib/services/links";
 
 // GET /api/links - List all links with tags
 // Supports both session and API key authentication (read-only)
@@ -19,69 +16,14 @@ async function getHandler(request: NextRequest) {
     const offset = parseInt(searchParams.get("offset") || "0");
     const tagFilter = searchParams.get("tag");
 
-    // Build query
-    let query = db
-      .select({
-        id: links.id,
-        userId: links.userId,
-        shortCode: links.shortCode,
-        originalUrl: links.originalUrl,
-        title: links.title,
-        description: links.description,
-        clicks: links.clicks,
-        isActive: links.isActive,
-        expiresAt: links.expiresAt,
-        createdAt: links.createdAt,
-        updatedAt: links.updatedAt,
-      })
-      .from(links)
-      .where(eq(links.userId, auth.userId))
-      .$dynamic();
+    const { links, total } = await linksService.listLinks({
+      userId: auth.userId,
+      limit,
+      offset,
+      tagFilter,
+    });
 
-    // Get links
-    const userLinks = await query
-      .orderBy(desc(links.createdAt))
-      .limit(limit)
-      .offset(offset);
-
-    // Get tags for each link
-    const linkIds = userLinks.map((link) => link.id);
-
-    if (linkIds.length === 0) {
-      return NextResponse.json({ links: [] });
-    }
-
-    const linkTagsData = await db
-      .select({
-        linkId: linkTags.linkId,
-        tagId: linkTags.tagId,
-        tagName: tags.name,
-        tagColor: tags.color,
-      })
-      .from(linkTags)
-      .leftJoin(tags, eq(linkTags.tagId, tags.id))
-      .where(inArray(linkTags.linkId, linkIds));
-
-    // Organize tags by link
-    const linksWithTags = userLinks.map((link) => ({
-      ...link,
-      tags: linkTagsData
-        .filter((lt) => lt.linkId === link.id)
-        .map((lt) => ({
-          id: lt.tagId,
-          name: lt.tagName,
-          color: lt.tagColor,
-        })),
-    }));
-
-    // Filter by tag if specified
-    const filteredLinks = tagFilter
-      ? linksWithTags.filter((link) =>
-          link.tags.some((tag) => tag.name === tagFilter)
-        )
-      : linksWithTags;
-
-    return NextResponse.json({ links: filteredLinks });
+    return NextResponse.json({ links, total });
   } catch (error) {
     console.error("Error fetching links:", error);
     return NextResponse.json(
@@ -110,111 +52,27 @@ async function postHandler(request: NextRequest) {
 
     const { url, shortCode, title, description, expiresAt, tags: tagNames } = validation.data;
 
-    // Generate or validate short code
-    let finalShortCode: string;
+    const link = await linksService.createLink({
+      userId: auth.userId,
+      url,
+      shortCode,
+      title,
+      description,
+      expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      tags: tagNames,
+    });
 
-    if (shortCode) {
-      // Check if custom short code already exists
-      const existing = await db
-        .select()
-        .from(links)
-        .where(eq(links.shortCode, shortCode))
-        .limit(1);
+    return NextResponse.json({ link }, { status: 201 });
+  } catch (error: any) {
+    console.error("Error creating link:", error);
 
-      if (existing.length > 0) {
-        return NextResponse.json(
-          { error: "Short code already exists" },
-          { status: 409 }
-        );
-      }
-
-      finalShortCode = shortCode;
-    } else {
-      finalShortCode = await generateUniqueShortCode();
-    }
-
-    // Create the link
-    const [newLink] = await db
-      .insert(links)
-      .values({
-        userId: auth.userId,
-        shortCode: finalShortCode,
-        originalUrl: url,
-        title: title || null,
-        description: description || null,
-        expiresAt: expiresAt ? new Date(expiresAt) : null,
-      })
-      .returning();
-
-    // Handle tags if provided
-    if (tagNames && tagNames.length > 0) {
-      // Get or create tags
-      const tagIds: string[] = [];
-
-      for (const tagName of tagNames) {
-        // Check if tag exists
-        let [tag] = await db
-          .select()
-          .from(tags)
-          .where(and(eq(tags.userId, auth.userId), eq(tags.name, tagName)))
-          .limit(1);
-
-        // Create tag if it doesn't exist
-        if (!tag) {
-          [tag] = await db
-            .insert(tags)
-            .values({
-              userId: auth.userId,
-              name: tagName,
-            })
-            .returning();
-        }
-
-        tagIds.push(tag.id);
-      }
-
-      // Create link-tag associations
-      if (tagIds.length > 0) {
-        await db.insert(linkTags).values(
-          tagIds.map((tagId) => ({
-            linkId: newLink.id,
-            tagId,
-          }))
-        );
-      }
-
-      // Fetch tags for response
-      const linkTagsData = await db
-        .select({
-          id: tags.id,
-          name: tags.name,
-          color: tags.color,
-        })
-        .from(tags)
-        .where(inArray(tags.id, tagIds));
-
+    if (error.message === "Short code already exists") {
       return NextResponse.json(
-        {
-          link: {
-            ...newLink,
-            tags: linkTagsData,
-          },
-        },
-        { status: 201 }
+        { error: error.message },
+        { status: 409 }
       );
     }
 
-    return NextResponse.json(
-      {
-        link: {
-          ...newLink,
-          tags: [],
-        },
-      },
-      { status: 201 }
-    );
-  } catch (error) {
-    console.error("Error creating link:", error);
     return NextResponse.json(
       { error: "Failed to create link" },
       { status: 500 }
@@ -241,12 +99,7 @@ async function deleteHandler(request: NextRequest) {
 
     const { linkIds } = validation.data;
 
-    // Delete only links that belong to the user
-    await db
-      .delete(links)
-      .where(
-        and(eq(links.userId, auth.userId), inArray(links.id, linkIds))
-      );
+    await linksService.bulkDeleteLinks(linkIds, auth.userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {
