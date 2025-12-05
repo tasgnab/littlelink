@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import EditLinkModal from "./EditLinkModal";
+import AnalyticsModal from "./AnalyticsModal";
 import { getAppUrl } from "@/lib/config";
 
 interface Tag {
@@ -31,6 +32,7 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState<string | null>(null);
   const [editingLink, setEditingLink] = useState<Link | null>(null);
+  const [analyticsLink, setAnalyticsLink] = useState<Link | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalLinks, setTotalLinks] = useState(0);
   const pageSize = 10;
@@ -247,16 +249,31 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-3">
                       <button
-                        onClick={() => setEditingLink(link)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
+                        onClick={() => setAnalyticsLink(link)}
+                        className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300"
+                        title="View analytics"
                       >
-                        Edit
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={() => setEditingLink(link)}
+                        className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300"
+                        title="Edit link"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
                       </button>
                       <button
                         onClick={() => deleteLink(link.id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 text-sm font-medium"
+                        className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                        title="Delete link"
                       >
-                        Delete
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
                       </button>
                     </div>
                   </td>
@@ -341,6 +358,14 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
             setEditingLink(null);
             fetchLinks();
           }}
+        />
+      )}
+
+      {analyticsLink && (
+        <AnalyticsModal
+          linkId={analyticsLink.id}
+          shortCode={analyticsLink.shortCode}
+          onClose={() => setAnalyticsLink(null)}
         />
       )}
     </>
