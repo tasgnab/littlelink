@@ -14,9 +14,9 @@
     "create-api-key": "node scripts/create-api-key.mjs"
   },
   "dependencies": {
-    "next": "^16.0.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
+    "next": "^16.0.7",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
     "next-auth": "^4.24.10",
     "@auth/drizzle-adapter": "^1.7.2",
     "drizzle-orm": "^0.36.4",
