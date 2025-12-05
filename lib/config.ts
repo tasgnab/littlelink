@@ -98,6 +98,30 @@ export const serverConfig = {
 
   // Flag for checking if running in GitHub Actions
   isGitHubActions: process.env.GITHUB_ACTIONS === "true",
+
+  // Rate limiting configuration
+  rateLimit: {
+    // API routes rate limit (requests per minute)
+    api: {
+      requests: parseInt(getOptionalEnv("RATE_LIMIT_API_REQUESTS", "100")),
+      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_API_WINDOW_MS", "60000")), // 1 minute
+    },
+    // Redirect routes rate limit (requests per minute) - higher for primary function
+    redirect: {
+      requests: parseInt(getOptionalEnv("RATE_LIMIT_REDIRECT_REQUESTS", "300")),
+      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_REDIRECT_WINDOW_MS", "60000")), // 1 minute
+    },
+    // Auth routes rate limit (requests per 15 minutes) - prevent brute force
+    auth: {
+      requests: parseInt(getOptionalEnv("RATE_LIMIT_AUTH_REQUESTS", "10")),
+      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_AUTH_WINDOW_MS", "900000")), // 15 minutes
+    },
+    // Strict rate limit for sensitive operations (requests per minute)
+    strict: {
+      requests: parseInt(getOptionalEnv("RATE_LIMIT_STRICT_REQUESTS", "5")),
+      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_STRICT_WINDOW_MS", "60000")), // 1 minute
+    },
+  },
 } as const;
 
 /**
@@ -141,6 +165,7 @@ export const config = {
   app: {
     url: serverConfig.app.url,
   },
+  rateLimit: serverConfig.rateLimit,
   isGitHubActions: serverConfig.isGitHubActions,
 } as const;
 

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { config } from '@/lib/config';
 
 interface RateLimitConfig {
   interval: number; // Time window in milliseconds
@@ -158,29 +159,30 @@ export function withRateLimit(
 }
 
 // Pre-configured rate limiters for different use cases
+// Uses values from environment variables or sensible defaults
 export const rateLimiters = {
-  // API routes: 100 requests per minute
+  // API routes (default: 100 requests per minute)
   api: new RateLimiter({
-    interval: 60 * 1000,
-    uniqueTokenPerInterval: 100,
+    interval: config.rateLimit.api.windowMs,
+    uniqueTokenPerInterval: config.rateLimit.api.requests,
   }),
 
-  // Redirect routes: 300 requests per minute (higher since this is primary function)
+  // Redirect routes (default: 300 requests per minute) - higher for primary function
   redirect: new RateLimiter({
-    interval: 60 * 1000,
-    uniqueTokenPerInterval: 300,
+    interval: config.rateLimit.redirect.windowMs,
+    uniqueTokenPerInterval: config.rateLimit.redirect.requests,
   }),
 
-  // Auth routes: 10 requests per 15 minutes (prevent brute force)
+  // Auth routes (default: 10 requests per 15 minutes) - prevent brute force
   auth: new RateLimiter({
-    interval: 15 * 60 * 1000,
-    uniqueTokenPerInterval: 10,
+    interval: config.rateLimit.auth.windowMs,
+    uniqueTokenPerInterval: config.rateLimit.auth.requests,
   }),
 
-  // Strict rate limit for sensitive operations: 5 requests per minute
+  // Strict rate limit for sensitive operations (default: 5 requests per minute)
   strict: new RateLimiter({
-    interval: 60 * 1000,
-    uniqueTokenPerInterval: 5,
+    interval: config.rateLimit.strict.windowMs,
+    uniqueTokenPerInterval: config.rateLimit.strict.requests,
   }),
 };
 

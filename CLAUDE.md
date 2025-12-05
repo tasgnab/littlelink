@@ -49,9 +49,24 @@ All environment variable access is centralized in `lib/config.ts` for:
 - `config.auth.googleClientSecret` - Google OAuth client secret
 - `config.auth.allowedUserEmail` - Single user email (validated)
 - `config.app.url` - App URL for server operations
+- `config.rateLimit.api` - API routes rate limit (requests & windowMs)
+- `config.rateLimit.redirect` - Redirect routes rate limit
+- `config.rateLimit.auth` - Auth routes rate limit
+- `config.rateLimit.strict` - Strict rate limit for sensitive operations
 
 **Client-side config** (via `getAppUrl()` helper):
 - `getAppUrl()` - Returns app URL (works on both client and server, falls back to window.location.origin on client)
+
+**Rate Limiting** (optional env vars with defaults):
+All rate limits are configurable via environment variables. Each rate limiter has two settings:
+- `RATE_LIMIT_*_REQUESTS` - Maximum number of requests allowed
+- `RATE_LIMIT_*_WINDOW_MS` - Time window in milliseconds
+
+Available rate limiters:
+- **API** (default: 100 req/min) - `RATE_LIMIT_API_REQUESTS`, `RATE_LIMIT_API_WINDOW_MS`
+- **REDIRECT** (default: 300 req/min) - `RATE_LIMIT_REDIRECT_REQUESTS`, `RATE_LIMIT_REDIRECT_WINDOW_MS`
+- **AUTH** (default: 10 req/15min) - `RATE_LIMIT_AUTH_REQUESTS`, `RATE_LIMIT_AUTH_WINDOW_MS`
+- **STRICT** (default: 5 req/min) - `RATE_LIMIT_STRICT_REQUESTS`, `RATE_LIMIT_STRICT_WINDOW_MS`
 
 **Important**: Always use the config exports instead of directly accessing `process.env`:
 ```typescript
