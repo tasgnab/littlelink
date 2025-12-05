@@ -46,5 +46,8 @@ next-env.d.ts
 drizzle/*.sql
 drizzle/meta
 
+# MaxMind GeoLite2 database
+/data/
+
 # claude
 .claude

@@ -110,6 +110,26 @@ export const serverConfig = {
   // Flag for checking if running in GitHub Actions
   isGitHubActions: process.env.GITHUB_ACTIONS === "true",
 
+  // MaxMind GeoLite2 configuration (optional)
+  maxmind: {
+    // License key from MaxMind account (optional)
+    get licenseKey() {
+      return process.env.MAXMIND_LICENSE_KEY || null;
+    },
+    // Path to GeoLite2 database file (for local storage)
+    get databasePath() {
+      return getOptionalEnv("MAXMIND_DATABASE_PATH", "./data/GeoLite2-City.mmdb");
+    },
+    // Vercel Blob storage token (for serverless deployments)
+    get blobToken() {
+      return process.env.BLOB_READ_WRITE_TOKEN || null;
+    },
+    // Storage mode: 'local' or 'blob'
+    get storageMode() {
+      return getOptionalEnv("MAXMIND_STORAGE_MODE", "local") as "local" | "blob";
+    },
+  },
+
   // Rate limiting configuration
   rateLimit: {
     // API routes rate limit (requests per minute)
@@ -191,6 +211,7 @@ export const config = {
       return serverConfig.app.url;
     },
   },
+  maxmind: serverConfig.maxmind,
   rateLimit: serverConfig.rateLimit,
   isGitHubActions: serverConfig.isGitHubActions,
 };

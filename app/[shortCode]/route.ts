@@ -5,6 +5,9 @@ import { eq, and } from "drizzle-orm";
 import { parseUserAgent } from "@/lib/utils";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 
+// Force Node.js runtime for geolocation support
+export const runtime = "nodejs";
+
 // GET /[shortCode] - Redirect to original URL
 async function getHandler(
   request: NextRequest,
@@ -207,6 +210,10 @@ async function getHandler(
 
     const { device, browser, os } = parseUserAgent(userAgent);
 
+    // Dynamically import geolocation service
+    const { lookupIP } = await import("@/lib/services/geolocation");
+    const { country, city } = await lookupIP(ip);
+
     // Don't await this - fire and forget
     db.insert(clicks)
       .values({
@@ -217,6 +224,8 @@ async function getHandler(
         device,
         browser,
         os,
+        country,
+        city,
       })
       .then(() => {
         // Also increment the click counter on the link

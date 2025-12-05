@@ -193,7 +193,7 @@ export async function createLink(params: CreateLinkParams): Promise<LinkWithTags
     .returning();
 
   // Handle tags if provided
-  let linkTags: Array<{ id: string; name: string; color: string }> = [];
+  let resultTags: Array<{ id: string; name: string; color: string }> = [];
 
   if (tagNames && tagNames.length > 0) {
     const tagIds: string[] = [];
@@ -239,13 +239,13 @@ export async function createLink(params: CreateLinkParams): Promise<LinkWithTags
         .from(tags)
         .where(inArray(tags.id, tagIds));
 
-      linkTags = linkTagsData;
+      resultTags = linkTagsData;
     }
   }
 
   return {
     ...newLink,
-    tags: linkTags,
+    tags: resultTags,
   };
 }
 

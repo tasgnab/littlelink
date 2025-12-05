@@ -25,11 +25,16 @@ npm run db:studio    # Open Drizzle Studio GUI
 
 # Build and Lint
 npm run build        # Build for production
-npm start            # Start production server
+npm start            # Start production server (without .env loading)
+npm run start:prod   # Start production server (with .env file loaded)
 npm run lint         # Run ESLint
 
 # API Key Management
 npm run create-api-key <email> <keyName>  # Create API key locally
+
+# Geolocation
+npm run download-geodb           # Download MaxMind GeoLite2 database locally
+npm run upload-geodb-to-blob     # Upload GeoLite2 database to Vercel Blob
 ```
 
 ## Architecture
@@ -49,6 +54,10 @@ All environment variable access is centralized in `lib/config.ts` for:
 - `config.auth.googleClientSecret` - Google OAuth client secret
 - `config.auth.allowedUserEmail` - Single user email (validated)
 - `config.app.url` - App URL for server operations
+- `config.maxmind.licenseKey` - MaxMind license key (optional, for geolocation)
+- `config.maxmind.databasePath` - Path to GeoLite2 database file (default: ./data/GeoLite2-City.mmdb)
+- `config.maxmind.blobToken` - Vercel Blob storage token (optional, for serverless deployments)
+- `config.maxmind.storageMode` - Storage mode: 'local' or 'blob' (default: 'local')
 - `config.rateLimit.api` - API routes rate limit (requests & windowMs)
 - `config.rateLimit.redirect` - Redirect routes rate limit
 - `config.rateLimit.auth` - Auth routes rate limit
@@ -129,6 +138,50 @@ All tables use UUID primary keys and proper foreign key cascades.
 
 This pattern ensures fast redirects while still capturing detailed analytics.
 
+### Geolocation (lib/services/geolocation.ts)
+LittleLink uses MaxMind's GeoLite2 database for IP geolocation tracking. Two storage modes are supported:
+
+**Storage Mode 1: Local File System (Default)**
+Best for: Development, self-hosted deployments with persistent storage
+
+Setup:
+1. Sign up for a free MaxMind account at https://www.maxmind.com/en/geolite2/signup
+2. Generate a license key
+3. Add `MAXMIND_LICENSE_KEY` to your `.env` file
+4. Run `npm run download-geodb` to download the database
+5. Database is stored in `./data/GeoLite2-City.mmdb` (auto-created, excluded from git)
+6. Set `MAXMIND_STORAGE_MODE=local` (default)
+
+**Storage Mode 2: Vercel Blob Storage**
+Best for: Vercel deployments, serverless environments with ephemeral file systems
+
+Setup:
+1. Complete MaxMind setup (steps 1-2 above)
+2. Create a Vercel Blob store in your Vercel dashboard (Storage → Create Database → Blob)
+3. Add both tokens to your `.env` file:
+   - `MAXMIND_LICENSE_KEY` - MaxMind license key
+   - `BLOB_READ_WRITE_TOKEN` - Vercel Blob token
+4. Run `npm run upload-geodb-to-blob` to upload the database to Vercel Blob
+5. Set `MAXMIND_STORAGE_MODE=blob` in your Vercel environment variables
+6. On app startup, the database is downloaded from Vercel Blob to a temporary file
+
+**How it works:**
+- Database initialized on app startup via `instrumentation.ts`
+- For blob mode, downloads ~70MB database to `/tmp` on cold starts (cached in memory)
+- `lookupIP()` function resolves IP addresses to country and city
+- Handles localhost/private IPs gracefully (returns "Local")
+- Returns null for unknown IPs (no external API calls)
+- Zero runtime dependencies - all lookups are local
+
+**Privacy:**
+- IP addresses are stored in the database for geolocation purposes
+- Geolocation happens server-side using a local database
+- No external API calls or third-party tracking
+- Database should be updated weekly for accuracy (re-run upload script)
+
+**Optional:**
+If `MAXMIND_LICENSE_KEY` is not set, geolocation is disabled and country/city fields remain null. The app functions normally without it.
+
 ### Component Structure
 - **Dashboard.tsx**: Main authenticated view, orchestrates all dashboard components
 - **CreateLinkForm.tsx**: Form for creating new short links with optional custom short code, title, and tag assignment
@@ -194,6 +247,18 @@ Required in `.env`:
 - `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` - OAuth credentials
 - `NEXT_PUBLIC_APP_URL` - Public-facing URL for generating short links
 - `ALLOWED_USER_EMAIL` - Single email address authorized to access the app
+
+Optional in `.env`:
+- `MAXMIND_LICENSE_KEY` - MaxMind license key for geolocation (free from maxmind.com)
+- `MAXMIND_DATABASE_PATH` - Custom path to GeoLite2 database (default: ./data/GeoLite2-City.mmdb)
+- `MAXMIND_STORAGE_MODE` - Storage mode: 'local' or 'blob' (default: 'local')
+- `BLOB_READ_WRITE_TOKEN` - Vercel Blob storage token (required for blob storage mode)
+
+**Important Note for Production:**
+- Next.js does NOT automatically load `.env` files in production mode (`npm start`)
+- Use `npm run start:prod` to start production server with `.env` file loaded
+- Or set environment variables manually before running `npm start`
+- For deployment platforms (Vercel, Railway, etc.), set environment variables in their dashboard
 
 ### Tags System
 - Tags are user-scoped (each user has their own tags)

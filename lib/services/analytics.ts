@@ -11,7 +11,7 @@ export interface Click {
   device: string | null;
   browser: string | null;
   os: string | null;
-  ipAddress: string | null;
+  ip: string | null;
   country: string | null;
   city: string | null;
 }
