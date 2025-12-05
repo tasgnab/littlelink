@@ -86,6 +86,27 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
     }
   };
 
+  const removeTagFromLink = async (link: Link, tagToRemove: Tag) => {
+    if (!confirm(`Remove tag "${tagToRemove.name}" from this link?`)) {
+      return;
+    }
+
+    try {
+      const remainingTags = link.tags
+        .filter((tag) => tag.id !== tagToRemove.id)
+        .map((tag) => tag.name);
+
+      await fetch(`/api/links/${link.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tags: remainingTags }),
+      });
+      fetchLinks();
+    } catch (err) {
+      console.error("Failed to remove tag:", err);
+    }
+  };
+
   if (loading) {
     return <div className="text-center py-12 text-gray-500 dark:text-gray-400">Loading...</div>;
   }
@@ -164,16 +185,23 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
                   <td className="px-4 py-3">
                     <div className="flex flex-wrap gap-1">
                       {link.tags.map((tag) => (
-                        <span
+                        <button
                           key={tag.id}
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                          onClick={() => removeTagFromLink(link, tag)}
+                          className="relative inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium group overflow-hidden transition-all hover:px-3"
                           style={{
                             backgroundColor: `${tag.color}20`,
                             color: tag.color,
                           }}
+                          title="Click to remove tag"
                         >
-                          {tag.name}
-                        </span>
+                          <span className="group-hover:opacity-0 transition-opacity duration-200">{tag.name}</span>
+                          <span className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                            <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </span>
+                        </button>
                       ))}
                     </div>
                   </td>
