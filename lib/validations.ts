@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+// Reserved route names that cannot be used as short codes
+const RESERVED_ROUTES = [
+  "dashboard",
+  "auth",
+  "api",
+  "_next",
+  "favicon.ico",
+];
+
 export const createLinkSchema = z.object({
   url: z.string().url("Please enter a valid URL"),
   shortCode: z
@@ -9,6 +18,10 @@ export const createLinkSchema = z.object({
     .regex(
       /^[a-zA-Z0-9_-]+$/,
       "Short code can only contain letters, numbers, hyphens, and underscores"
+    )
+    .refine(
+      (code) => !RESERVED_ROUTES.includes(code?.toLowerCase() || ""),
+      "This short code is reserved and cannot be used"
     )
     .optional(),
   title: z.string().optional(),

@@ -28,9 +28,8 @@ npm run build        # Build for production
 npm start            # Start production server
 npm run lint         # Run ESLint
 
-# Data Management
+# API Key Management
 npm run create-api-key <email> <keyName>  # Create API key locally
-npm run import-links <csvFile> <email>    # Bulk import links from CSV
 ```
 
 ## Architecture

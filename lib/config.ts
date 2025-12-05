@@ -41,35 +41,46 @@ function validateUrl(url: string): boolean {
  */
 export const serverConfig = {
   database: {
-    url: getRequiredEnv(
-      "DATABASE_URL",
-      "DATABASE_URL is required. Please set it in your .env file."
-    ),
+    // Lazy getter to avoid validation during build time
+    get url() {
+      return getRequiredEnv(
+        "DATABASE_URL",
+        "DATABASE_URL is required. Please set it in your .env file."
+      );
+    },
   },
 
   auth: {
-    // NextAuth configuration
-    nextAuthUrl: getRequiredEnv(
-      "NEXTAUTH_URL",
-      "NEXTAUTH_URL is required for authentication. Set it to your app's URL (e.g., http://localhost:3000)"
-    ),
-    nextAuthSecret: getRequiredEnv(
-      "NEXTAUTH_SECRET",
-      "NEXTAUTH_SECRET is required. Generate one with: openssl rand -base64 32"
-    ),
+    // NextAuth configuration - lazy getters to avoid validation during build time
+    get nextAuthUrl() {
+      return getRequiredEnv(
+        "NEXTAUTH_URL",
+        "NEXTAUTH_URL is required for authentication. Set it to your app's URL (e.g., http://localhost:3000)"
+      );
+    },
+    get nextAuthSecret() {
+      return getRequiredEnv(
+        "NEXTAUTH_SECRET",
+        "NEXTAUTH_SECRET is required. Generate one with: openssl rand -base64 32"
+      );
+    },
 
     // Google OAuth
-    googleClientId: getRequiredEnv(
-      "GOOGLE_CLIENT_ID",
-      "GOOGLE_CLIENT_ID is required for Google OAuth. Get it from Google Cloud Console."
-    ),
-    googleClientSecret: getRequiredEnv(
-      "GOOGLE_CLIENT_SECRET",
-      "GOOGLE_CLIENT_SECRET is required for Google OAuth. Get it from Google Cloud Console."
-    ),
+    get googleClientId() {
+      return getRequiredEnv(
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_ID is required for Google OAuth. Get it from Google Cloud Console."
+      );
+    },
+    get googleClientSecret() {
+      return getRequiredEnv(
+        "GOOGLE_CLIENT_SECRET",
+        "GOOGLE_CLIENT_SECRET is required for Google OAuth. Get it from Google Cloud Console."
+      );
+    },
 
     // Allowed user email
-    allowedUserEmail: (() => {
+    get allowedUserEmail() {
       const email = getRequiredEnv(
         "ALLOWED_USER_EMAIL",
         "ALLOWED_USER_EMAIL is required. Set it to the email address that should have access."
@@ -80,12 +91,12 @@ export const serverConfig = {
         );
       }
       return email;
-    })(),
+    },
   },
 
   app: {
     // App URL for server-side operations (like generating QR codes)
-    url: (() => {
+    get url() {
       const url = getOptionalEnv("NEXT_PUBLIC_APP_URL", "http://localhost:3000");
       if (!validateUrl(url)) {
         throw new Error(
@@ -93,7 +104,7 @@ export const serverConfig = {
         );
       }
       return url;
-    })(),
+    },
   },
 
   // Flag for checking if running in GitHub Actions
@@ -150,24 +161,39 @@ export function getAppUrl(): string {
 
 /**
  * Type-safe config object that exports only what's needed
+ * Uses getters to maintain lazy evaluation
  */
 export const config = {
   database: {
-    url: serverConfig.database.url,
+    get url() {
+      return serverConfig.database.url;
+    },
   },
   auth: {
-    nextAuthUrl: serverConfig.auth.nextAuthUrl,
-    nextAuthSecret: serverConfig.auth.nextAuthSecret,
-    googleClientId: serverConfig.auth.googleClientId,
-    googleClientSecret: serverConfig.auth.googleClientSecret,
-    allowedUserEmail: serverConfig.auth.allowedUserEmail,
+    get nextAuthUrl() {
+      return serverConfig.auth.nextAuthUrl;
+    },
+    get nextAuthSecret() {
+      return serverConfig.auth.nextAuthSecret;
+    },
+    get googleClientId() {
+      return serverConfig.auth.googleClientId;
+    },
+    get googleClientSecret() {
+      return serverConfig.auth.googleClientSecret;
+    },
+    get allowedUserEmail() {
+      return serverConfig.auth.allowedUserEmail;
+    },
   },
   app: {
-    url: serverConfig.app.url,
+    get url() {
+      return serverConfig.app.url;
+    },
   },
   rateLimit: serverConfig.rateLimit,
   isGitHubActions: serverConfig.isGitHubActions,
-} as const;
+};
 
 // Export types for TypeScript
 export type Config = typeof config;
