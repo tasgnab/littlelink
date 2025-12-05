@@ -6,6 +6,7 @@ import { apiKeys } from "@/lib/db/schema";
 import { createApiKeySchema } from "@/lib/validations";
 import { eq, and } from "drizzle-orm";
 import { customAlphabet } from "nanoid";
+import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 
 const nanoid = customAlphabet(
   "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
@@ -13,7 +14,7 @@ const nanoid = customAlphabet(
 );
 
 // GET /api/api-keys - List all API keys
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -43,7 +44,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/api-keys - Create a new API key
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
 }
 
 // DELETE /api/api-keys?id=[id] - Delete an API key
-export async function DELETE(request: NextRequest) {
+async function deleteHandler(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
 
@@ -120,4 +121,17 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Export rate-limited handlers (using strict limiter for sensitive operations)
+export async function GET(request: NextRequest) {
+  return applyRateLimit(request, rateLimiters.strict, () => getHandler(request));
+}
+
+export async function POST(request: NextRequest) {
+  return applyRateLimit(request, rateLimiters.strict, () => postHandler(request));
+}
+
+export async function DELETE(request: NextRequest) {
+  return applyRateLimit(request, rateLimiters.strict, () => deleteHandler(request));
 }

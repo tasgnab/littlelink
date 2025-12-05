@@ -4,10 +4,11 @@ import { tags } from "@/lib/db/schema";
 import { updateTagSchema } from "@/lib/validations";
 import { eq, and } from "drizzle-orm";
 import { requireWriteAuth } from "@/lib/api-auth";
+import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 
 // PATCH /api/tags/[id] - Update a tag
 // Requires session authentication (write access)
-export async function PATCH(
+async function patchHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -48,7 +49,7 @@ export async function PATCH(
 
 // DELETE /api/tags/[id] - Delete a tag
 // Requires session authentication (write access)
-export async function DELETE(
+async function deleteHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -75,4 +76,19 @@ export async function DELETE(
       { status: 500 }
     );
   }
+}
+
+// Export rate-limited handlers
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return applyRateLimit(request, rateLimiters.api, () => patchHandler(request, context));
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return applyRateLimit(request, rateLimiters.api, () => deleteHandler(request, context));
 }

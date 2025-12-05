@@ -3,10 +3,11 @@ import { db } from "@/lib/db";
 import { clicks, links } from "@/lib/db/schema";
 import { eq, and, gte, sql } from "drizzle-orm";
 import { requireReadAuth } from "@/lib/api-auth";
+import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 
 // GET /api/analytics/[linkId] - Get analytics for a link
 // Supports both session and API key authentication (read-only)
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: Promise<{ linkId: string }> }
 ) {
@@ -75,4 +76,12 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+// Export rate-limited handler
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ linkId: string }> }
+) {
+  return applyRateLimit(request, rateLimiters.api, () => getHandler(request, context));
 }

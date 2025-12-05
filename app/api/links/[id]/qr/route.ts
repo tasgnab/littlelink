@@ -4,10 +4,11 @@ import { links } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import QRCode from "qrcode";
 import { requireReadAuth } from "@/lib/api-auth";
+import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 
 // GET /api/links/[id]/qr - Generate QR code for a link
 // Supports both session and API key authentication (read-only)
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -44,4 +45,12 @@ export async function GET(
       { status: 500 }
     );
   }
+}
+
+// Export rate-limited handler
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return applyRateLimit(request, rateLimiters.api, () => getHandler(request, context));
 }

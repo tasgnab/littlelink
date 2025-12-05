@@ -5,10 +5,11 @@ import { createLinkSchema, bulkDeleteSchema } from "@/lib/validations";
 import { generateUniqueShortCode } from "@/lib/utils";
 import { eq, desc, inArray, and, sql } from "drizzle-orm";
 import { requireReadAuth, requireWriteAuth } from "@/lib/api-auth";
+import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 
 // GET /api/links - List all links with tags
 // Supports both session and API key authentication (read-only)
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   try {
     const auth = await requireReadAuth(request);
     if (auth instanceof Response) return auth;
@@ -92,7 +93,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/links - Create a new link with tags
 // Requires session authentication (write access)
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     const auth = await requireWriteAuth(request);
     if (auth instanceof Response) return auth;
@@ -223,7 +224,7 @@ export async function POST(request: NextRequest) {
 
 // DELETE /api/links - Bulk delete links
 // Requires session authentication (write access)
-export async function DELETE(request: NextRequest) {
+async function deleteHandler(request: NextRequest) {
   try {
     const auth = await requireWriteAuth(request);
     if (auth instanceof Response) return auth;
@@ -255,4 +256,17 @@ export async function DELETE(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Export rate-limited handlers
+export async function GET(request: NextRequest) {
+  return applyRateLimit(request, rateLimiters.api, () => getHandler(request));
+}
+
+export async function POST(request: NextRequest) {
+  return applyRateLimit(request, rateLimiters.api, () => postHandler(request));
+}
+
+export async function DELETE(request: NextRequest) {
+  return applyRateLimit(request, rateLimiters.api, () => deleteHandler(request));
 }

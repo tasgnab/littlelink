@@ -4,10 +4,11 @@ import { links, tags, linkTags } from "@/lib/db/schema";
 import { updateLinkSchema } from "@/lib/validations";
 import { eq, and, inArray } from "drizzle-orm";
 import { requireReadAuth, requireWriteAuth } from "@/lib/api-auth";
+import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 
 // GET /api/links/[id] - Get a single link with tags
 // Supports both session and API key authentication (read-only)
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -55,7 +56,7 @@ export async function GET(
 
 // PATCH /api/links/[id] - Update a link and its tags
 // Requires session authentication (write access)
-export async function PATCH(
+async function patchHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -164,7 +165,7 @@ export async function PATCH(
 
 // DELETE /api/links/[id] - Delete a link
 // Requires session authentication (write access)
-export async function DELETE(
+async function deleteHandler(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
@@ -191,4 +192,26 @@ export async function DELETE(
       { status: 500 }
     );
   }
+}
+
+// Export rate-limited handlers
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return applyRateLimit(request, rateLimiters.api, () => getHandler(request, context));
+}
+
+export async function PATCH(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return applyRateLimit(request, rateLimiters.api, () => patchHandler(request, context));
+}
+
+export async function DELETE(
+  request: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  return applyRateLimit(request, rateLimiters.api, () => deleteHandler(request, context));
 }

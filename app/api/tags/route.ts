@@ -4,10 +4,11 @@ import { tags } from "@/lib/db/schema";
 import { createTagSchema } from "@/lib/validations";
 import { eq, and } from "drizzle-orm";
 import { requireReadAuth, requireWriteAuth } from "@/lib/api-auth";
+import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 
 // GET /api/tags - List all tags
 // Supports both session and API key authentication (read-only)
-export async function GET(request: NextRequest) {
+async function getHandler(request: NextRequest) {
   try {
     const auth = await requireReadAuth(request);
     if (auth instanceof Response) return auth;
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
 
 // POST /api/tags - Create a new tag
 // Requires session authentication (write access)
-export async function POST(request: NextRequest) {
+async function postHandler(request: NextRequest) {
   try {
     const auth = await requireWriteAuth(request);
     if (auth instanceof Response) return auth;
@@ -78,4 +79,13 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
+}
+
+// Export rate-limited handlers
+export async function GET(request: NextRequest) {
+  return applyRateLimit(request, rateLimiters.api, () => getHandler(request));
+}
+
+export async function POST(request: NextRequest) {
+  return applyRateLimit(request, rateLimiters.api, () => postHandler(request));
 }

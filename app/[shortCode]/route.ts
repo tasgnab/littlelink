@@ -3,9 +3,10 @@ import { db } from "@/lib/db";
 import { links, clicks } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import { parseUserAgent } from "@/lib/utils";
+import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 
 // GET /[shortCode] - Redirect to original URL
-export async function GET(
+async function getHandler(
   request: NextRequest,
   { params }: { params: Promise<{ shortCode: string }> }
 ) {
@@ -289,4 +290,89 @@ export async function GET(
       }
     );
   }
+}
+
+// Export rate-limited handler with custom error page for rate limiting
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ shortCode: string }> }
+) {
+  const { rateLimiters, getClientIdentifier } = await import("@/lib/rate-limit");
+  const identifier = getClientIdentifier(request);
+  const result = rateLimiters.redirect.check(identifier);
+
+  if (!result.success) {
+    return new NextResponse(
+      `
+      <!DOCTYPE html>
+      <html lang="en">
+        <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>429 - Too Many Requests</title>
+          <style>
+            body {
+              margin: 0;
+              padding: 0;
+              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              min-height: 100vh;
+              background: linear-gradient(135deg, #fc5c7d 0%, #6a82fb 100%);
+              color: white;
+            }
+            .container {
+              text-align: center;
+              padding: 2rem;
+            }
+            h1 {
+              font-size: 6rem;
+              margin: 0;
+              font-weight: bold;
+            }
+            h2 {
+              font-size: 2rem;
+              margin: 1rem 0;
+              font-weight: 500;
+            }
+            p {
+              font-size: 1.2rem;
+              opacity: 0.9;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="container">
+            <h1>429</h1>
+            <h2>Too Many Requests</h2>
+            <p>You've made too many requests. Please try again in a moment.</p>
+          </div>
+        </body>
+      </html>
+      `,
+      {
+        status: 429,
+        headers: {
+          "Content-Type": "text/html",
+          "X-RateLimit-Limit": "300",
+          "X-RateLimit-Remaining": "0",
+          "X-RateLimit-Reset": result.reset.toString(),
+          "Retry-After": Math.ceil((result.reset - Date.now()) / 1000).toString(),
+        },
+      }
+    );
+  }
+
+  const response = await getHandler(request, context);
+  const headers = new Headers(response.headers);
+  headers.set("X-RateLimit-Limit", "300");
+  headers.set("X-RateLimit-Remaining", result.remaining.toString());
+  headers.set("X-RateLimit-Reset", result.reset.toString());
+
+  return new NextResponse(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
