@@ -1,12 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-}
+import { useTags } from "@/contexts/TagsContext";
 
 interface TagsSidebarProps {
   selectedTag: string | null;
@@ -14,21 +8,7 @@ interface TagsSidebarProps {
 }
 
 export default function TagsSidebar({ selectedTag, onSelectTag }: TagsSidebarProps) {
-  const [tags, setTags] = useState<Tag[]>([]);
-
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
-  const fetchTags = async () => {
-    try {
-      const response = await fetch("/api/tags");
-      const data = await response.json();
-      setTags(data.tags || []);
-    } catch (err) {
-      console.error("Failed to fetch tags:", err);
-    }
-  };
+  const { tags } = useTags();
 
   return (
     <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">

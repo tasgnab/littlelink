@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useTags } from "@/contexts/TagsContext";
 
 interface Tag {
   id: string;
@@ -23,27 +24,13 @@ interface EditLinkModalProps {
 }
 
 export default function EditLinkModal({ link, onClose, onSave }: EditLinkModalProps) {
+  const { tags: availableTags } = useTags();
   const [url, setUrl] = useState(link.originalUrl);
   const [title, setTitle] = useState(link.title || "");
   const [selectedTags, setSelectedTags] = useState<string[]>(link.tags.map((t) => t.name));
   const [tagInput, setTagInput] = useState("");
-  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
-  const fetchTags = async () => {
-    try {
-      const response = await fetch("/api/tags");
-      const data = await response.json();
-      setAvailableTags(data.tags || []);
-    } catch (err) {
-      console.error("Failed to fetch tags:", err);
-    }
-  };
 
   const handleAddTag = (tagName: string) => {
     const trimmed = tagName.trim();

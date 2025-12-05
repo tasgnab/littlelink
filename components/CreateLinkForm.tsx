@@ -1,42 +1,23 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { getAppUrl } from "@/lib/config";
+import { useTags } from "@/contexts/TagsContext";
 
 interface CreateLinkFormProps {
   onLinkCreated: () => void;
 }
 
-interface Tag {
-  id: string;
-  name: string;
-  color: string;
-}
-
 export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
+  const { tags: availableTags, refetchTags } = useTags();
   const [url, setUrl] = useState("");
   const [shortCode, setShortCode] = useState("");
   const [title, setTitle] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
-  const [availableTags, setAvailableTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
-
-  useEffect(() => {
-    fetchTags();
-  }, []);
-
-  const fetchTags = async () => {
-    try {
-      const response = await fetch("/api/tags");
-      const data = await response.json();
-      setAvailableTags(data.tags || []);
-    } catch (err) {
-      console.error("Failed to fetch tags:", err);
-    }
-  };
 
   const handleAddTag = (tagName: string) => {
     const trimmed = tagName.trim();
@@ -84,7 +65,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
       setTitle("");
       setSelectedTags([]);
       onLinkCreated();
-      fetchTags(); // Refresh tags in case new ones were created
+      refetchTags(); // Refresh tags in case new ones were created
     } catch (err: any) {
       setError(err.message);
     } finally {
