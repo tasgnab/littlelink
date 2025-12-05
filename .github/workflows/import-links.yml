@@ -1,0 +1,95 @@
+name: Import Links from CSV
+
+on:
+  workflow_dispatch:
+    inputs:
+      user_email:
+        description: 'User email address (must exist in database)'
+        required: true
+        type: string
+      csv_content:
+        description: 'CSV content (paste full CSV including headers)'
+        required: true
+        type: string
+      environment:
+        description: 'Environment to import to'
+        required: true
+        type: choice
+        default: production
+        options:
+          - production
+          - staging
+          - development
+
+jobs:
+  import-links:
+    name: Import Links
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Create temporary CSV file
+        run: |
+          cat > /tmp/import.csv << 'EOF'
+          ${{ inputs.csv_content }}
+          EOF
+          echo "✅ CSV file created"
+          echo "📊 Number of lines: $(wc -l < /tmp/import.csv)"
+
+      - name: Validate CSV format
+        run: |
+          echo "🔍 Validating CSV format..."
+          head -1 /tmp/import.csv
+
+          # Check if required columns exist
+          if ! head -1 /tmp/import.csv | grep -q "shortCode"; then
+            echo "❌ Error: CSV must contain 'shortCode' column"
+            exit 1
+          fi
+
+          if ! head -1 /tmp/import.csv | grep -q "longUrl"; then
+            echo "❌ Error: CSV must contain 'longUrl' column"
+            exit 1
+          fi
+
+          echo "✅ CSV format is valid"
+
+      - name: Run import script
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          echo "🚀 Starting import process..."
+          echo "📧 User email: ${{ inputs.user_email }}"
+          echo "🌍 Environment: ${{ inputs.environment }}"
+          echo ""
+
+          node scripts/import-links.mjs /tmp/import.csv "${{ inputs.user_email }}"
+
+      - name: Cleanup
+        if: always()
+        run: |
+          rm -f /tmp/import.csv
+          echo "🧹 Temporary files cleaned up"
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "✅ Import completed successfully!"
+          echo ""
+          echo "📋 Details:"
+          echo "   - User: ${{ inputs.user_email }}"
+          echo "   - Environment: ${{ inputs.environment }}"
+          echo ""
+          echo "🔗 Check your dashboard to verify the imported links"
