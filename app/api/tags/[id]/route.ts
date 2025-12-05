@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { tags } from "@/lib/db/schema";
 import { updateTagSchema } from "@/lib/validations";
-import { eq, and } from "drizzle-orm";
 import { requireWriteAuth } from "@/lib/api-auth";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
+import * as tagsService from "@/lib/services/tags";
 
 // PATCH /api/tags/[id] - Update a tag
 // Requires session authentication (write access)
@@ -27,19 +25,16 @@ async function patchHandler(
       );
     }
 
-    const [updatedTag] = await db
-      .update(tags)
-      .set(validation.data)
-      .where(and(eq(tags.id, id), eq(tags.userId, auth.userId)))
-      .returning();
+    const updatedTag = await tagsService.updateTag(id, auth.userId, validation.data);
 
-    if (!updatedTag) {
+    return NextResponse.json({ tag: updatedTag });
+  } catch (error: any) {
+    console.error("Error updating tag:", error);
+
+    if (error.message === "Tag not found") {
       return NextResponse.json({ error: "Tag not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ tag: updatedTag });
-  } catch (error) {
-    console.error("Error updating tag:", error);
     return NextResponse.json(
       { error: "Failed to update tag" },
       { status: 500 }
@@ -59,14 +54,7 @@ async function deleteHandler(
 
     const { id } = await params;
 
-    const [deletedTag] = await db
-      .delete(tags)
-      .where(and(eq(tags.id, id), eq(tags.userId, auth.userId)))
-      .returning();
-
-    if (!deletedTag) {
-      return NextResponse.json({ error: "Tag not found" }, { status: 404 });
-    }
+    await tagsService.deleteTag(id, auth.userId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

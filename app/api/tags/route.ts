@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { tags } from "@/lib/db/schema";
 import { createTagSchema } from "@/lib/validations";
-import { eq, and } from "drizzle-orm";
 import { requireReadAuth, requireWriteAuth } from "@/lib/api-auth";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
+import * as tagsService from "@/lib/services/tags";
 
 // GET /api/tags - List all tags
 // Supports both session and API key authentication (read-only)
@@ -13,11 +11,7 @@ async function getHandler(request: NextRequest) {
     const auth = await requireReadAuth(request);
     if (auth instanceof Response) return auth;
 
-    const userTags = await db
-      .select()
-      .from(tags)
-      .where(eq(tags.userId, auth.userId))
-      .orderBy(tags.name);
+    const userTags = await tagsService.listTags(auth.userId);
 
     return NextResponse.json({ tags: userTags });
   } catch (error) {
@@ -48,32 +42,23 @@ async function postHandler(request: NextRequest) {
 
     const { name, color } = validation.data;
 
-    // Check if tag already exists for this user
-    const existing = await db
-      .select()
-      .from(tags)
-      .where(and(eq(tags.userId, auth.userId), eq(tags.name, name)))
-      .limit(1);
+    const newTag = await tagsService.createTag({
+      userId: auth.userId,
+      name,
+      color: color || "#3b82f6",
+    });
 
-    if (existing.length > 0) {
+    return NextResponse.json({ tag: newTag }, { status: 201 });
+  } catch (error: any) {
+    console.error("Error creating tag:", error);
+
+    if (error.message === "Tag with this name already exists") {
       return NextResponse.json(
         { error: "Tag already exists" },
         { status: 409 }
       );
     }
 
-    const [newTag] = await db
-      .insert(tags)
-      .values({
-        userId: auth.userId,
-        name,
-        color: color || "#3b82f6",
-      })
-      .returning();
-
-    return NextResponse.json({ tag: newTag }, { status: 201 });
-  } catch (error) {
-    console.error("Error creating tag:", error);
     return NextResponse.json(
       { error: "Failed to create tag" },
       { status: 500 }

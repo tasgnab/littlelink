@@ -2,14 +2,18 @@
 
 import { useState, useEffect } from "react";
 
-interface Link {
-  id: string;
-  clicks: number;
-  isActive: boolean;
+interface Stats {
+  totalLinks: number;
+  totalClicks: number;
+  activeLinks: number;
 }
 
 export default function Stats() {
-  const [links, setLinks] = useState<Link[]>([]);
+  const [stats, setStats] = useState<Stats>({
+    totalLinks: 0,
+    totalClicks: 0,
+    activeLinks: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -19,9 +23,9 @@ export default function Stats() {
   const fetchStats = async () => {
     try {
       setLoading(true);
-      const response = await fetch("/api/links");
+      const response = await fetch("/api/stats");
       const data = await response.json();
-      setLinks(data.links);
+      setStats(data);
     } catch (err) {
       console.error("Failed to fetch statistics:", err);
     } finally {
@@ -29,9 +33,7 @@ export default function Stats() {
     }
   };
 
-  const totalLinks = links.length;
-  const totalClicks = links.reduce((sum, link) => sum + link.clicks, 0);
-  const activeLinks = links.filter((link) => link.isActive).length;
+  const { totalLinks, totalClicks, activeLinks } = stats;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

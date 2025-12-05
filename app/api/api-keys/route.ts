@@ -1,17 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { db } from "@/lib/db";
-import { apiKeys } from "@/lib/db/schema";
 import { createApiKeySchema } from "@/lib/validations";
-import { eq, and } from "drizzle-orm";
-import { customAlphabet } from "nanoid";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
-
-const nanoid = customAlphabet(
-  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
-  32
-);
+import * as apiKeysService from "@/lib/services/api-keys";
 
 // GET /api/api-keys - List all API keys
 async function getHandler(request: NextRequest) {
@@ -22,16 +14,7 @@ async function getHandler(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const keys = await db
-      .select({
-        id: apiKeys.id,
-        name: apiKeys.name,
-        lastUsed: apiKeys.lastUsed,
-        createdAt: apiKeys.createdAt,
-        // Don't return the actual key for security
-      })
-      .from(apiKeys)
-      .where(eq(apiKeys.userId, session.user.id));
+    const keys = await apiKeysService.listApiKeys(session.user.id);
 
     return NextResponse.json({ apiKeys: keys });
   } catch (error) {
@@ -63,19 +46,10 @@ async function postHandler(request: NextRequest) {
     }
 
     const { name } = validation.data;
-    const key = `sk_${nanoid()}`;
-
-    const [newApiKey] = await db
-      .insert(apiKeys)
-      .values({
-        userId: session.user.id,
-        name,
-        key,
-      })
-      .returning();
+    const newApiKey = await apiKeysService.createApiKey(session.user.id, name);
 
     // Return the key only once during creation
-    return NextResponse.json({ apiKey: { ...newApiKey, key } }, { status: 201 });
+    return NextResponse.json({ apiKey: newApiKey }, { status: 201 });
   } catch (error) {
     console.error("Error creating API key:", error);
     return NextResponse.json(
@@ -104,12 +78,9 @@ async function deleteHandler(request: NextRequest) {
       );
     }
 
-    const [deletedKey] = await db
-      .delete(apiKeys)
-      .where(and(eq(apiKeys.id, id), eq(apiKeys.userId, session.user.id)))
-      .returning();
+    const deleted = await apiKeysService.deleteApiKey(id, session.user.id);
 
-    if (!deletedKey) {
+    if (!deleted) {
       return NextResponse.json({ error: "API key not found" }, { status: 404 });
     }
 

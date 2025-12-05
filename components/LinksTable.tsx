@@ -39,7 +39,7 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
 
   useEffect(() => {
     fetchLinks();
-  }, [refreshTrigger, selectedTag, currentPage]);
+  }, [refreshTrigger, currentPage]);
 
   useEffect(() => {
     // Reset to page 1 when tag filter changes
