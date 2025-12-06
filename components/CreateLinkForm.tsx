@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { getAppUrl } from "@/lib/config";
 import { Tag, useApp } from "@/contexts/AppContext";
 import { generateRandomTagColor } from "@/lib/utils-client";
 
@@ -64,8 +63,8 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
       if (!response.ok) {
         throw new Error(data.error || "Failed to create link");
       }
-
-      const shortUrl = `${getAppUrl()}/${data.link.shortCode}`;
+      const baseUrlOrigin = window.location.origin;
+      const shortUrl = `${baseUrlOrigin}/${data.link.shortCode}`;
 
       setSuccess(`Link created: ${shortUrl}`);
       setUrl("");
