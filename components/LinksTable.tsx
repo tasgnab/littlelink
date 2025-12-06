@@ -46,6 +46,7 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
   useEffect(() => {
     // Reset to page 1 when tag filter changes
     setCurrentPage(1);
+    fetchLinks();
   }, [selectedTag]);
 
   const fetchLinks = async () => {

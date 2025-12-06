@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createTagSchema } from "@/lib/validations";
-import { requireReadAuth, requireWriteAuth } from "@/lib/api-auth";
+import { requireWriteAuth } from "@/lib/api-auth";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 import * as tagsService from "@/lib/services/tags";
 
@@ -8,7 +8,7 @@ import * as tagsService from "@/lib/services/tags";
 // Supports both session and API key authentication (read-only)
 async function getHandler(request: NextRequest) {
   try {
-    const auth = await requireReadAuth(request);
+    const auth = await requireWriteAuth(request);
     if (auth instanceof Response) return auth;
 
     const userTags = await tagsService.listTags(auth.userId);

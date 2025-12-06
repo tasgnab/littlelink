@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireReadAuth } from "@/lib/api-auth";
+import { requireWriteAuth } from "@/lib/api-auth";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 import * as statsService from "@/lib/services/stats";
 
@@ -7,7 +7,7 @@ import * as statsService from "@/lib/services/stats";
 // Supports both session and API key authentication (read-only)
 async function getHandler(request: NextRequest) {
   try {
-    const auth = await requireReadAuth(request);
+    const auth = await requireWriteAuth(request);
     if (auth instanceof NextResponse) return auth;
 
     const stats = await statsService.getUserStats();

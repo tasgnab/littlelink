@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { links, clicks } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
-import { parseUserAgent } from "@/lib/utils";
-import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
+import { rateLimiters, getClientIdentifier } from "@/lib/rate-limit";
+import * as linksService from "@/lib/services/links";
+import * as analyticsService from "@/lib/services/analytics";
 
 // Force Node.js runtime for geolocation support
 export const runtime = "nodejs";
@@ -17,11 +15,7 @@ async function getHandler(
     const { shortCode } = await params;
 
     // Find the link
-    const [link] = await db
-      .select()
-      .from(links)
-      .where(eq(links.shortCode, shortCode))
-      .limit(1);
+    const link = await linksService.getLinkByShortCode(shortCode);
 
     // Link not found
     if (!link) {
@@ -204,39 +198,7 @@ async function getHandler(
     }
 
     // Track the click asynchronously (fire-and-forget)
-    const userAgent = request.headers.get("user-agent") || "";
-    const referer = request.headers.get("referer") || null;
-    const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null;
-
-    const { device, browser, os } = parseUserAgent(userAgent);
-
-    // Dynamically import geolocation service
-    const { lookupIP } = await import("@/lib/services/geolocation");
-    const { country, city } = await lookupIP(ip);
-
-    // Don't await this - fire and forget
-    db.insert(clicks)
-      .values({
-        linkId: link.id,
-        referer,
-        userAgent,
-        ip,
-        device,
-        browser,
-        os,
-        country,
-        city,
-      })
-      .then(() => {
-        // Also increment the click counter on the link
-        return db
-          .update(links)
-          .set({ clicks: link.clicks + 1 })
-          .where(eq(links.id, link.id));
-      })
-      .catch((error) => {
-        console.error("Error tracking click:", error);
-      });
+    analyticsService.trackVisit(request, link);
 
     // Redirect to the original URL
     return NextResponse.redirect(link.originalUrl, 302);
@@ -306,7 +268,6 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ shortCode: string }> }
 ) {
-  const { rateLimiters, getClientIdentifier } = await import("@/lib/rate-limit");
   const identifier = getClientIdentifier(request);
   const result = rateLimiters.redirect.check(identifier);
 

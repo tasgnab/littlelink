@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireReadAuth, requireWriteAuth } from "@/lib/api-auth";
+import { requireWriteAuth } from "@/lib/api-auth";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 import * as analyticsService from "@/lib/services/analytics";
 

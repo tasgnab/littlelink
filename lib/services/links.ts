@@ -22,6 +22,17 @@ export interface LinkWithTags {
   }>;
 }
 
+export interface Link {
+  id: string;
+  shortCode: string;
+  originalUrl: string;
+  title: string | null;
+  description: string | null;
+  isActive: boolean;
+  expiresAt: Date | null;
+  clicks: number;
+}
+
 export interface ListLinksParams {
   userId: string;
   limit?: number;
@@ -336,4 +347,21 @@ export async function bulkDeleteLinks(linkIds: string[], userId: string): Promis
   await db
     .delete(links)
     .where(and(eq(links.userId, userId), inArray(links.id, linkIds)));
+}
+
+
+export async function getLinkByShortCode(shortCode: string): Promise<Link | null> {
+  const [link] = await db
+    .select()
+    .from(links)
+    .where(eq(links.shortCode, shortCode))
+    .limit(1);
+
+  if (!link) {
+    return null;
+  }
+
+  return {
+    ...link,
+  };
 }

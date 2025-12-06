@@ -1,6 +1,10 @@
 import { db } from "@/lib/db";
 import { clicks, links } from "@/lib/db/schema";
 import { eq, and, gte } from "drizzle-orm";
+import { NextRequest } from "next/server";
+import { Link } from "./links";
+import { parseUserAgent } from "../utils";
+
 
 export interface Click {
   id: string;
@@ -79,4 +83,54 @@ export async function getLinkAnalytics(
     osStats,
     recentClicks: clicksData.slice(-50), // Last 50 clicks
   };
+}
+
+export interface NewClickParams {
+  id: string;
+  linkId: string;
+  timestamp: Date;
+  referer: string | null;
+  userAgent: string | null;
+  device: string | null;
+  browser: string | null;
+  os: string | null;
+  ip: string | null;
+  country: string | null;
+  city: string | null;
+}
+
+export async function trackVisit(request: NextRequest, link: Link) {
+  const userAgent = request.headers.get("user-agent") || "";
+  const referer = request.headers.get("referer") || null;
+  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null;
+
+  const { device, browser, os } = parseUserAgent(userAgent);
+
+  // Dynamically import geolocation service
+  const { lookupIP } = await import("@/lib/services/geolocation");
+  const { country, city } = await lookupIP(ip);
+
+  // Don't await this - fire and forget
+  db.insert(clicks)
+    .values({
+      linkId: link.id,
+      referer,
+      userAgent,
+      ip,
+      device,
+      browser,
+      os,
+      country,
+      city,
+    })
+    .then(() => {
+      // Also increment the click counter on the link
+      return db
+        .update(links)
+        .set({ clicks: link.clicks + 1 })
+        .where(eq(links.id, link.id));
+    })
+    .catch((error) => {
+      console.error("Error tracking click:", error);
+    });
 }

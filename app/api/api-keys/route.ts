@@ -4,17 +4,15 @@ import { authOptions } from "@/lib/auth";
 import { createApiKeySchema } from "@/lib/validations";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 import * as apiKeysService from "@/lib/services/api-keys";
+import { requireWriteAuth } from "@/lib/api-auth";
 
 // GET /api/api-keys - List all API keys
 async function getHandler(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions);
+    const auth = await requireWriteAuth(request);
+    if (auth instanceof Response) return auth;
 
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    const keys = await apiKeysService.listApiKeys(session.user.id);
+    const keys = await apiKeysService.listApiKeys(auth.userId);
 
     return NextResponse.json({ apiKeys: keys });
   } catch (error) {
