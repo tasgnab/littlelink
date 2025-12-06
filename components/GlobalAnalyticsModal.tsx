@@ -9,6 +9,7 @@ interface GlobalAnalyticsData {
     activeLinks: number;
     uniqueDevices: number;
     uniqueCountries: number;
+    orphanedVisits: number;
   };
   clickTrend: { date: string; clicks: number }[];
   topCountries: { country: string; clicks: number }[];
@@ -16,6 +17,7 @@ interface GlobalAnalyticsData {
   deviceStats: { device: string; clicks: number; percentage: number }[];
   browserStats: { browser: string; clicks: number; percentage: number }[];
   osStats: { os: string; clicks: number; percentage: number }[];
+  topOrphanedShortCodes: { shortCode: string; visits: number }[];
 }
 
 interface GlobalAnalyticsModalProps {
@@ -27,7 +29,7 @@ export default function GlobalAnalyticsModal({ onClose }: GlobalAnalyticsModalPr
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [days, setDays] = useState(30);
-  const [activeTab, setActiveTab] = useState<'geography' | 'devices' | 'browsers' | 'os'>('geography');
+  const [activeTab, setActiveTab] = useState<'geography' | 'devices' | 'browsers' | 'os' | 'orphaned'>('geography');
 
   useEffect(() => {
     fetchAnalytics();
@@ -107,7 +109,7 @@ export default function GlobalAnalyticsModal({ onClose }: GlobalAnalyticsModalPr
           {!loading && !error && analytics && (
             <div className="space-y-6">
               {/* Overview Stats */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
                 <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-gray-900 dark:text-white">
@@ -155,6 +157,16 @@ export default function GlobalAnalyticsModal({ onClose }: GlobalAnalyticsModalPr
                     </div>
                     <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
                       Countries
+                    </div>
+                  </div>
+                </div>
+                <div className="bg-gray-50 dark:bg-gray-700 rounded-lg p-4">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-orange-600 dark:text-orange-400">
+                      {analytics.overview.orphanedVisits}
+                    </div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                      404 Visits
                     </div>
                   </div>
                 </div>
@@ -233,6 +245,16 @@ export default function GlobalAnalyticsModal({ onClose }: GlobalAnalyticsModalPr
                     }`}
                   >
                     Operating Systems
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('orphaned')}
+                    className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+                      activeTab === 'orphaned'
+                        ? 'border-orange-500 text-orange-600 dark:text-orange-400'
+                        : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
+                    }`}
+                  >
+                    404 Visits
                   </button>
                 </div>
               </div>
@@ -366,6 +388,40 @@ export default function GlobalAnalyticsModal({ onClose }: GlobalAnalyticsModalPr
                           </div>
                         </div>
                       ))
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'orphaned' && (
+                  <div>
+                    <div className="mb-4">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-2">
+                        Top 404 Short Codes
+                      </h3>
+                      <p className="text-xs text-gray-500 dark:text-gray-400">
+                        These are the most frequently visited non-existent short codes. This could indicate broken links or typosquatting attempts.
+                      </p>
+                    </div>
+                    {analytics.topOrphanedShortCodes.length === 0 ? (
+                      <div className="text-sm text-gray-500 dark:text-gray-400">No orphaned visits yet</div>
+                    ) : (
+                      <div className="space-y-2">
+                        {analytics.topOrphanedShortCodes.map((item, i) => (
+                          <div key={i} className="flex items-center justify-between p-3 bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-lg">
+                            <div className="flex items-center gap-3">
+                              <div className="flex items-center justify-center w-8 h-8 bg-orange-100 dark:bg-orange-900/40 text-orange-700 dark:text-orange-300 rounded-full text-xs font-semibold">
+                                {i + 1}
+                              </div>
+                              <code className="text-sm font-mono text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                {item.shortCode}
+                              </code>
+                            </div>
+                            <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                              {item.visits} {item.visits === 1 ? 'visit' : 'visits'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
                     )}
                   </div>
                 )}

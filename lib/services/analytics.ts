@@ -481,6 +481,7 @@ export interface GlobalAnalytics {
     activeLinks: number;
     uniqueDevices: number;
     uniqueCountries: number;
+    orphanedVisits: number;
   };
   clickTrend: { date: string; clicks: number }[];
   topCountries: { country: string; clicks: number }[];
@@ -488,6 +489,7 @@ export interface GlobalAnalytics {
   deviceStats: { device: string; clicks: number; percentage: number }[];
   browserStats: { browser: string; clicks: number; percentage: number }[];
   osStats: { os: string; clicks: number; percentage: number }[];
+  topOrphanedShortCodes: { shortCode: string; visits: number }[];
 }
 
 export async function getGlobalAnalytics(
@@ -506,6 +508,24 @@ export async function getGlobalAnalytics(
 
   const linkIds = userLinks.map(l => l.id);
 
+  // Get orphaned visits count (not tied to any link, so get all)
+  const orphanedVisitsData = await db
+    .select()
+    .from(orphanedVisits)
+    .where(gte(orphanedVisits.timestamp, dateThreshold));
+
+  const orphanedVisitsCount = orphanedVisitsData.length;
+
+  // Get top orphaned short codes
+  const orphanedShortCodeCounts = new Map<string, number>();
+  for (const visit of orphanedVisitsData) {
+    orphanedShortCodeCounts.set(visit.shortCode, (orphanedShortCodeCounts.get(visit.shortCode) || 0) + 1);
+  }
+  const topOrphanedShortCodes = Array.from(orphanedShortCodeCounts.entries())
+    .map(([shortCode, visits]) => ({ shortCode, visits }))
+    .sort((a, b) => b.visits - a.visits)
+    .slice(0, 10);
+
   if (linkIds.length === 0) {
     return {
       overview: {
@@ -514,6 +534,7 @@ export async function getGlobalAnalytics(
         activeLinks: 0,
         uniqueDevices: 0,
         uniqueCountries: 0,
+        orphanedVisits: orphanedVisitsCount,
       },
       clickTrend: [],
       topCountries: [],
@@ -521,6 +542,7 @@ export async function getGlobalAnalytics(
       deviceStats: [],
       browserStats: [],
       osStats: [],
+      topOrphanedShortCodes,
     };
   }
 
@@ -637,6 +659,7 @@ export async function getGlobalAnalytics(
       activeLinks: linkStats?.activeLinks || 0,
       uniqueDevices: uniqueDevices.size,
       uniqueCountries: uniqueCountries.size,
+      orphanedVisits: orphanedVisitsCount,
     },
     clickTrend,
     topCountries,
@@ -644,5 +667,6 @@ export async function getGlobalAnalytics(
     deviceStats,
     browserStats,
     osStats,
+    topOrphanedShortCodes,
   };
 }
