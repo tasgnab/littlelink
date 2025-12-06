@@ -5,7 +5,6 @@ import { signOut } from "next-auth/react";
 import CreateLinkForm from "./CreateLinkForm";
 import LinksTable from "./LinksTable";
 import TagsSidebar from "./TagsSidebar";
-import GlobalAnalytics from "./GlobalAnalytics";
 import { AppProvider } from "@/contexts/AppContext";
 
 interface User {
@@ -82,10 +81,6 @@ export default function Dashboard({ user }: DashboardProps) {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
 
-        {/* Analytics Section */}
-        <div className="mb-6">
-          <GlobalAnalytics days={30} />
-        </div>
 
         {/* Create Link Form */}
         <div className="mb-6">

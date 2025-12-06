@@ -218,8 +218,7 @@ export default function LinksTable({ refreshTrigger, selectedTag }: LinksTablePr
                           onClick={() => removeTagFromLink(link, tag)}
                           className="relative inline-flex items-center justify-center px-2 py-0.5 rounded text-xs font-medium group overflow-hidden transition-all hover:px-3"
                           style={{
-                            backgroundColor: `${tag.color}20`,
-                            color: tag.color,
+                            backgroundColor: `${tag.color}`,
                           }}
                           title="Click to remove tag"
                         >

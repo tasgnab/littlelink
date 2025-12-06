@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
 import TagAnalyticsModal from "./TagAnalyticsModal";
+import GlobalAnalyticsModal from "./GlobalAnalyticsModal";
 
 interface TagsSidebarProps {
   selectedTag: string | null;
@@ -20,6 +21,7 @@ export default function TagsSidebar({ selectedTag, onSelectTag, onTagDeleted }: 
   const { tags, updateTag, removeTag } = useApp();
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [analyticsTag, setAnalyticsTag] = useState<Tag | null>(null);
+  const [showGlobalAnalytics, setShowGlobalAnalytics] = useState(false);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
   const [loading, setLoading] = useState(false);
@@ -115,16 +117,32 @@ export default function TagsSidebar({ selectedTag, onSelectTag, onTagDeleted }: 
       <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Filter by Tag</h3>
         <div className="space-y-1">
-          <button
-            onClick={() => onSelectTag(null)}
-            className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
-              selectedTag === null
-                ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium"
-                : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
-            }`}
-          >
-            All Links
-          </button>
+          <div className="relative group">
+            <button
+              onClick={() => onSelectTag(null)}
+              className={`w-full text-left px-3 py-2 rounded-md text-sm transition-colors ${
+                selectedTag === null
+                  ? "bg-blue-50 dark:bg-blue-900 text-blue-700 dark:text-blue-200 font-medium"
+                  : "text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+              }`}
+            >
+              <span className="pr-8 group-hover:pr-0">All Links</span>
+            </button>
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center bg-white dark:bg-gray-800 rounded px-0.5 shadow-sm">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowGlobalAnalytics(true);
+                }}
+                className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded"
+                title="View global analytics"
+              >
+                <svg className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </button>
+            </div>
+          </div>
           {tags.map((tag) => (
             <div key={tag.id} className="relative group">
               <button
@@ -264,6 +282,13 @@ export default function TagsSidebar({ selectedTag, onSelectTag, onTagDeleted }: 
           tagName={analyticsTag.name}
           tagColor={analyticsTag.color}
           onClose={() => setAnalyticsTag(null)}
+        />
+      )}
+
+      {/* Global Analytics Modal */}
+      {showGlobalAnalytics && (
+        <GlobalAnalyticsModal
+          onClose={() => setShowGlobalAnalytics(false)}
         />
       )}
     </>
