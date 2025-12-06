@@ -162,3 +162,25 @@ export const linkTags = pgTable(
     index("tagId_link_idx").on(table.tagId),
   ]
 );
+
+// Orphaned visits table (404 tracking)
+export const orphanedVisits = pgTable(
+  "orphanedVisits",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    shortCode: varchar("shortCode", { length: 255 }).notNull(),
+    timestamp: timestamp("timestamp", { mode: "date" }).defaultNow().notNull(),
+    referer: text("referer"),
+    userAgent: text("userAgent"),
+    ip: text("ip"),
+    country: text("country"),
+    city: text("city"),
+    device: text("device"),
+    browser: text("browser"),
+    os: text("os"),
+  },
+  (table) => [
+    index("shortCode_orphan_idx").on(table.shortCode),
+    index("timestamp_orphan_idx").on(table.timestamp),
+  ]
+);

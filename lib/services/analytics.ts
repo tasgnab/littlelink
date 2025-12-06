@@ -1,5 +1,5 @@
 import { db } from "@/lib/db";
-import { clicks, links, linkTags, tags } from "@/lib/db/schema";
+import { clicks, links, linkTags, tags, orphanedVisits } from "@/lib/db/schema";
 import { eq, and, gte, sql, desc, count as drizzleCount, inArray } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { Link } from "./links";
@@ -132,6 +132,35 @@ export async function trackVisit(request: NextRequest, link: Link) {
     })
     .catch((error) => {
       console.error("Error tracking click:", error);
+    });
+}
+
+export async function trackOrphanedVisit(request: NextRequest, shortCode: string) {
+  const userAgent = request.headers.get("user-agent") || "";
+  const referer = request.headers.get("referer") || null;
+  const ip = request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || null;
+
+  const { device, browser, os } = parseUserAgent(userAgent);
+
+  // Dynamically import geolocation service
+  const { lookupIP } = await import("@/lib/services/geolocation");
+  const { country, city } = await lookupIP(ip);
+
+  // Don't await this - fire and forget
+  db.insert(orphanedVisits)
+    .values({
+      shortCode,
+      referer,
+      userAgent,
+      ip,
+      device,
+      browser,
+      os,
+      country,
+      city,
+    })
+    .catch((error) => {
+      console.error("Error tracking orphaned visit:", error);
     });
 }
 

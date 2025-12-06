@@ -122,6 +122,7 @@ API keys are managed via:
 - **users, accounts, sessions, verificationTokens**: NextAuth tables
 - **links**: Core short link mappings with `shortCode` (unique, indexed), `originalUrl`, `clicks` counter, `isActive` flag, optional `expiresAt`
 - **clicks**: Detailed analytics per click (timestamp, referer, user agent, device/browser/os parsing, IP, geo data)
+- **orphanedVisits**: Tracks 404 visits to non-existent short codes (shortCode, timestamp, referer, user agent, device/browser/os parsing, IP, geo data)
 - **tags**: User-created tags with name and color
 - **linkTags**: Many-to-many junction table between links and tags
 - **apiKeys**: API key storage (user-scoped, stores hashed key, name, and lastUsed timestamp)
@@ -130,13 +131,13 @@ All tables use UUID primary keys and proper foreign key cascades.
 
 ### URL Redirect Logic (app/[shortCode]/route.ts)
 1. Lookup link by `shortCode`
-2. Return styled 404 HTML if not found
+2. Return styled 404 HTML if not found (tracks orphaned visit asynchronously)
 3. Check `isActive` flag - return 410 HTML if disabled
 4. Check `expiresAt` - return 410 HTML if expired
 5. **Fire-and-forget analytics**: Insert click record and increment counter asynchronously (does not block redirect)
 6. Perform 302 redirect to `originalUrl`
 
-This pattern ensures fast redirects while still capturing detailed analytics.
+This pattern ensures fast redirects while still capturing detailed analytics. Orphaned visits (404s) are also tracked to help identify broken links and potential typosquatting.
 
 ### Geolocation (lib/services/geolocation.ts)
 LittleLink uses MaxMind's GeoLite2 database for IP geolocation tracking. Two storage modes are supported:

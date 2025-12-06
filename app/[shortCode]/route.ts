@@ -13,12 +13,16 @@ async function getHandler(
 ) {
   try {
     const { shortCode } = await params;
+    const searchParams = request.nextUrl.searchParams;
 
     // Find the link
     const link = await linksService.getLinkByShortCode(shortCode);
 
     // Link not found
     if (!link) {
+      // Track orphaned visit asynchronously (fire-and-forget)
+      analyticsService.trackOrphanedVisit(request, shortCode + (searchParams.toString() ? `?${searchParams.toString()}` : ''));
+
       return new NextResponse(
         `
         <!DOCTYPE html>
