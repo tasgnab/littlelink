@@ -1,7 +1,6 @@
 import { getLinktreeLinks } from "@/lib/services/links";
 import { getAppUrl, clientConfig } from "@/lib/config";
 import { getFaviconUrl, getBrandColors } from "@/lib/utils";
-import Link from "next/link";
 import Image from "next/image";
 
 export default async function Home() {
