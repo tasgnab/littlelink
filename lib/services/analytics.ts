@@ -145,6 +145,30 @@ export interface TagAnalytics {
   clickTrend: { date: string; clicks: number }[];
 }
 
+export interface IndividualTagAnalytics {
+  tagId: string;
+  tagName: string;
+  tagColor: string;
+  totalClicks: number;
+  linksCount: number;
+  clickTrend: { date: string; clicks: number }[];
+  topLinks: { linkId: string; shortCode: string; title: string | null; clicks: number }[];
+  deviceStats: { device: string; clicks: number; percentage: number }[];
+  browserStats: { browser: string; clicks: number; percentage: number }[];
+  osStats: { os: string; clicks: number; percentage: number }[];
+  topCountries: { country: string; clicks: number }[];
+  recentClicks: {
+    id: string;
+    timestamp: Date;
+    device: string | null;
+    browser: string | null;
+    os: string | null;
+    country: string | null;
+    city: string | null;
+    shortCode: string;
+  }[];
+}
+
 export async function getTagAnalytics(
   userId: string,
   days: number = 30
@@ -240,6 +264,184 @@ export async function getTagAnalytics(
 
   // Sort by total clicks descending
   return result.sort((a, b) => b.totalClicks - a.totalClicks);
+}
+
+export async function getIndividualTagAnalytics(
+  tagId: string,
+  userId: string,
+  days: number = 30
+): Promise<IndividualTagAnalytics | null> {
+  // Calculate date threshold
+  const dateThreshold = new Date();
+  dateThreshold.setDate(dateThreshold.getDate() - days);
+
+  // Get tag info and verify ownership
+  const [tag] = await db
+    .select()
+    .from(tags)
+    .where(and(eq(tags.id, tagId), eq(tags.userId, userId)))
+    .limit(1);
+
+  if (!tag) {
+    return null;
+  }
+
+  // Get all links with this tag
+  const tagLinks = await db
+    .select({
+      linkId: linkTags.linkId,
+      shortCode: links.shortCode,
+      title: links.title,
+      clicks: links.clicks,
+    })
+    .from(linkTags)
+    .innerJoin(links, eq(linkTags.linkId, links.id))
+    .where(eq(linkTags.tagId, tagId));
+
+  const linkIds = tagLinks.map(l => l.linkId);
+
+  if (linkIds.length === 0) {
+    return {
+      tagId: tag.id,
+      tagName: tag.name,
+      tagColor: tag.color,
+      totalClicks: 0,
+      linksCount: 0,
+      clickTrend: [],
+      topLinks: [],
+      deviceStats: [],
+      browserStats: [],
+      osStats: [],
+      topCountries: [],
+      recentClicks: [],
+    };
+  }
+
+  // Get all clicks for links with this tag
+  const tagClicks = await db
+    .select({
+      id: clicks.id,
+      timestamp: clicks.timestamp,
+      device: clicks.device,
+      browser: clicks.browser,
+      os: clicks.os,
+      country: clicks.country,
+      city: clicks.city,
+      linkId: clicks.linkId,
+    })
+    .from(clicks)
+    .where(
+      and(
+        inArray(clicks.linkId, linkIds),
+        gte(clicks.timestamp, dateThreshold)
+      )
+    )
+    .orderBy(desc(clicks.timestamp));
+
+  // Process click data
+  const clicksByDate = new Map<string, number>();
+  const deviceCounts = new Map<string, number>();
+  const browserCounts = new Map<string, number>();
+  const osCounts = new Map<string, number>();
+  const countryCounts = new Map<string, number>();
+
+  for (const click of tagClicks) {
+    // Date trend
+    const dateStr = click.timestamp.toISOString().split('T')[0];
+    clicksByDate.set(dateStr, (clicksByDate.get(dateStr) || 0) + 1);
+
+    // Device stats
+    const device = click.device || 'unknown';
+    deviceCounts.set(device, (deviceCounts.get(device) || 0) + 1);
+
+    // Browser stats
+    const browser = click.browser || 'unknown';
+    browserCounts.set(browser, (browserCounts.get(browser) || 0) + 1);
+
+    // OS stats
+    const os = click.os || 'unknown';
+    osCounts.set(os, (osCounts.get(os) || 0) + 1);
+
+    // Country stats
+    const country = click.country || 'Unknown';
+    countryCounts.set(country, (countryCounts.get(country) || 0) + 1);
+  }
+
+  const totalClicksInPeriod = tagClicks.length;
+
+  // Format results
+  const clickTrend = Array.from(clicksByDate.entries())
+    .map(([date, clicks]) => ({ date, clicks }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const topLinks = tagLinks
+    .map(link => ({
+      linkId: link.linkId,
+      shortCode: link.shortCode,
+      title: link.title,
+      clicks: link.clicks,
+    }))
+    .sort((a, b) => b.clicks - a.clicks)
+    .slice(0, 10);
+
+  const deviceStats = Array.from(deviceCounts.entries())
+    .map(([device, clicks]) => ({
+      device,
+      clicks,
+      percentage: totalClicksInPeriod > 0 ? (clicks / totalClicksInPeriod) * 100 : 0,
+    }))
+    .sort((a, b) => b.clicks - a.clicks);
+
+  const browserStats = Array.from(browserCounts.entries())
+    .map(([browser, clicks]) => ({
+      browser,
+      clicks,
+      percentage: totalClicksInPeriod > 0 ? (clicks / totalClicksInPeriod) * 100 : 0,
+    }))
+    .sort((a, b) => b.clicks - a.clicks);
+
+  const osStats = Array.from(osCounts.entries())
+    .map(([os, clicks]) => ({
+      os,
+      clicks,
+      percentage: totalClicksInPeriod > 0 ? (clicks / totalClicksInPeriod) * 100 : 0,
+    }))
+    .sort((a, b) => b.clicks - a.clicks);
+
+  const topCountries = Array.from(countryCounts.entries())
+    .map(([country, clicks]) => ({ country, clicks }))
+    .sort((a, b) => b.clicks - a.clicks)
+    .slice(0, 10);
+
+  // Get recent clicks with link info
+  const recentClicksWithLinks = tagClicks.slice(0, 50).map(click => {
+    const link = tagLinks.find(l => l.linkId === click.linkId);
+    return {
+      id: click.id,
+      timestamp: click.timestamp,
+      device: click.device,
+      browser: click.browser,
+      os: click.os,
+      country: click.country,
+      city: click.city,
+      shortCode: link?.shortCode || 'unknown',
+    };
+  });
+
+  return {
+    tagId: tag.id,
+    tagName: tag.name,
+    tagColor: tag.color,
+    totalClicks: totalClicksInPeriod,
+    linksCount: linkIds.length,
+    clickTrend,
+    topLinks,
+    deviceStats,
+    browserStats,
+    osStats,
+    topCountries,
+    recentClicks: recentClicksWithLinks,
+  };
 }
 
 // Global Analytics

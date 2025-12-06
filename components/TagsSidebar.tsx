@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useApp } from "@/contexts/AppContext";
+import TagAnalyticsModal from "./TagAnalyticsModal";
 
 interface TagsSidebarProps {
   selectedTag: string | null;
@@ -18,6 +19,7 @@ interface Tag {
 export default function TagsSidebar({ selectedTag, onSelectTag, onTagDeleted }: TagsSidebarProps) {
   const { tags, updateTag, removeTag } = useApp();
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
+  const [analyticsTag, setAnalyticsTag] = useState<Tag | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,11 @@ export default function TagsSidebar({ selectedTag, onSelectTag, onTagDeleted }: 
     setEditName(tag.name);
     setEditColor(tag.color);
     setError("");
+  };
+
+  const handleAnalyticsClick = (tag: Tag, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setAnalyticsTag(tag);
   };
 
   const handleDeleteClick = async (tag: Tag, e: React.MouseEvent) => {
@@ -136,6 +143,15 @@ export default function TagsSidebar({ selectedTag, onSelectTag, onTagDeleted }: 
               </button>
               <div className="absolute right-1 top-1/2 -translate-y-1/2 hidden group-hover:flex items-center gap-0.5 bg-white dark:bg-gray-800 rounded px-0.5 shadow-sm">
                 <button
+                  onClick={(e) => handleAnalyticsClick(tag, e)}
+                  className="p-1 hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded"
+                  title="View analytics"
+                >
+                  <svg className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </button>
+                <button
                   onClick={(e) => handleEditClick(tag, e)}
                   className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded"
                   title="Edit tag"
@@ -239,6 +255,16 @@ export default function TagsSidebar({ selectedTag, onSelectTag, onTagDeleted }: 
             </div>
           </div>
         </div>
+      )}
+
+      {/* Tag Analytics Modal */}
+      {analyticsTag && (
+        <TagAnalyticsModal
+          tagId={analyticsTag.id}
+          tagName={analyticsTag.name}
+          tagColor={analyticsTag.color}
+          onClose={() => setAnalyticsTag(null)}
+        />
       )}
     </>
   );
