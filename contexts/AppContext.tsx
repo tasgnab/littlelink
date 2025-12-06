@@ -8,7 +8,7 @@ interface Tag {
   color: string;
 }
 
-interface TagsContextType {
+interface AppContextType {
   tags: Tag[];
   loading: boolean;
   error: string | null;
@@ -18,9 +18,9 @@ interface TagsContextType {
   removeTag: (id: string) => void;
 }
 
-const TagsContext = createContext<TagsContextType | undefined>(undefined);
+const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export function TagsProvider({ children }: { children: ReactNode }) {
+export function AppProvider({ children }: { children: ReactNode }) {
   const [tags, setTags] = useState<Tag[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,7 +66,7 @@ export function TagsProvider({ children }: { children: ReactNode }) {
     setTags((prev) => prev.filter((tag) => tag.id !== id));
   };
 
-  const value: TagsContextType = {
+  const value: AppContextType = {
     tags,
     loading,
     error,
@@ -76,13 +76,13 @@ export function TagsProvider({ children }: { children: ReactNode }) {
     removeTag,
   };
 
-  return <TagsContext.Provider value={value}>{children}</TagsContext.Provider>;
+  return <AppContext value={value}>{children}</AppContext>;
 }
 
-export function useTags() {
-  const context = useContext(TagsContext);
+export function useApp() {
+  const context = useContext(AppContext);
   if (context === undefined) {
-    throw new Error("useTags must be used within a TagsProvider");
+    throw new Error("useApp must be used within an AppProvider");
   }
   return context;
 }

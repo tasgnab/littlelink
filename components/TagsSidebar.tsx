@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useTags } from "@/contexts/TagsContext";
+import { useApp } from "@/contexts/AppContext";
 
 interface TagsSidebarProps {
   selectedTag: string | null;
@@ -16,7 +16,7 @@ interface Tag {
 }
 
 export default function TagsSidebar({ selectedTag, onSelectTag, onTagDeleted }: TagsSidebarProps) {
-  const { tags, updateTag, removeTag } = useTags();
+  const { tags, updateTag, removeTag } = useApp();
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [editName, setEditName] = useState("");
   const [editColor, setEditColor] = useState("");

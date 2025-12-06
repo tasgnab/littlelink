@@ -2,14 +2,14 @@
 
 import { useState } from "react";
 import { getAppUrl } from "@/lib/config";
-import { useTags } from "@/contexts/TagsContext";
+import { useApp } from "@/contexts/AppContext";
 
 interface CreateLinkFormProps {
   onLinkCreated: () => void;
 }
 
 export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
-  const { tags: availableTags, refetchTags } = useTags();
+  const { tags: availableTags, refetchTags } = useApp();
   const [url, setUrl] = useState("");
   const [shortCode, setShortCode] = useState("");
   const [title, setTitle] = useState("");
@@ -213,7 +213,8 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
                     key={tag.id}
                     type="button"
                     onClick={() => handleAddTag(tag.name)}
-                    className="text-xs px-2 py-1 bg-gray-50 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded hover:bg-gray-100 dark:hover:bg-gray-600 border border-gray-200 dark:border-gray-600"
+                    style={{ backgroundColor: tag.color }}
+                    className="text-xs px-2 py-1 text-white rounded hover:opacity-80 transition-opacity"
                   >
                     {tag.name}
                   </button>

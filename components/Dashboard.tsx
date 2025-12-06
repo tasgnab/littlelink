@@ -6,7 +6,7 @@ import CreateLinkForm from "./CreateLinkForm";
 import LinksTable from "./LinksTable";
 import TagsSidebar from "./TagsSidebar";
 import Stats from "./Stats";
-import { TagsProvider } from "@/contexts/TagsContext";
+import { AppProvider } from "@/contexts/AppContext";
 
 interface User {
   id: string;
@@ -32,7 +32,7 @@ export default function Dashboard({ user }: DashboardProps) {
   };
 
   return (
-    <TagsProvider>
+    <AppProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10">
@@ -117,6 +117,6 @@ export default function Dashboard({ user }: DashboardProps) {
         </div>
       </main>
     </div>
-    </TagsProvider>
+    </AppProvider>
   );
 }
