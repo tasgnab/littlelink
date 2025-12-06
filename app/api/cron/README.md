@@ -39,6 +39,8 @@ Configured in `vercel.json`:
 4. Uploads the new database to Vercel Blob
 5. Returns a JSON response with the result
 
+**Note:** After the update, serverless functions with cached databases in `/tmp` will continue using the old version until their next cold start. The cache is automatically cleared when the function instance is recycled.
+
 ### Testing Locally
 
 To test the cron endpoint locally:
@@ -83,6 +85,14 @@ curl -X GET http://localhost:3000/api/cron/update-geodb \
 - Check Vercel deployment logs to see cron execution logs
 - Look for the "Vercel Cron: Update GeoLite2 Database" header in logs
 - Monitor for errors and adjust as needed
+
+### Performance Benefits
+
+The geolocation service uses intelligent caching:
+- **First cold start:** Downloads database from Vercel Blob (~70MB, 2-5 seconds)
+- **Subsequent cold starts:** Loads from `/tmp` cache (instant)
+- Cache persists across requests in the same function instance
+- Dramatically reduces cold start times for serverless deployments
 
 ### Security
 

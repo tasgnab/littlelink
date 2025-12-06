@@ -177,7 +177,9 @@ The GeoLite2 database is automatically updated weekly via Vercel Cron Jobs:
 
 **How it works:**
 - Database initialized on app startup via `instrumentation.ts`
-- For blob mode, downloads ~70MB database to `/tmp` on cold starts (cached in memory)
+- For blob mode, checks `/tmp` directory first for cached database
+- Only downloads ~70MB database from Vercel Blob if not found in cache
+- Subsequent cold starts are much faster by reusing cached file
 - `lookupIP()` function resolves IP addresses to country and city
 - Handles localhost/private IPs gracefully (returns "Local")
 - Returns null for unknown IPs (no external API calls)

@@ -15,6 +15,7 @@ export interface GeoLocation {
 /**
  * Initialize the MaxMind GeoIP2 reader from Vercel Blob
  * Downloads the database to a temporary file and opens it
+ * Checks temp directory first to avoid re-downloading on every cold start
  */
 async function initializeFromBlob(): Promise<void> {
   const blobToken = config.maxmind.blobToken;
@@ -27,6 +28,27 @@ async function initializeFromBlob(): Promise<void> {
   }
 
   try {
+    const tempDir = os.tmpdir();
+    const tempPath = path.join(tempDir, "GeoLite2-City.mmdb");
+
+    // Check if database already exists in temp directory
+    if (fs.existsSync(tempPath)) {
+      console.log("✓ Found cached GeoLite2 database in temp directory");
+      console.log(`  Location: ${tempPath}`);
+
+      try {
+        // Try to open the cached database
+        reader = await Reader.open(tempPath);
+        const stats = fs.statSync(tempPath);
+        console.log(`✅ MaxMind GeoIP2 database loaded from cache (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
+        return;
+      } catch (error) {
+        console.warn("⚠️  Cached database is corrupted or invalid, will re-download");
+        // Delete corrupted file
+        fs.unlinkSync(tempPath);
+      }
+    }
+
     // Import Vercel Blob SDK
     const { list } = await import("@vercel/blob");
 
@@ -56,8 +78,6 @@ async function initializeFromBlob(): Promise<void> {
     }
 
     const buffer = await response.arrayBuffer();
-    const tempDir = os.tmpdir();
-    const tempPath = path.join(tempDir, "GeoLite2-City.mmdb");
 
     console.log(`💾 Saving to: ${tempPath}`);
 
