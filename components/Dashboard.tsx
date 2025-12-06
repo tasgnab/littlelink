@@ -27,6 +27,10 @@ export default function Dashboard({ user }: DashboardProps) {
     setRefreshTrigger((prev) => prev + 1);
   };
 
+  const handleTagDeleted = () => {
+    setRefreshTrigger((prev) => prev + 1);
+  };
+
   return (
     <TagsProvider>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -94,6 +98,7 @@ export default function Dashboard({ user }: DashboardProps) {
             <TagsSidebar
               selectedTag={selectedTag}
               onSelectTag={setSelectedTag}
+              onTagDeleted={handleTagDeleted}
             />
           </div>
 

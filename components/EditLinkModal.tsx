@@ -25,7 +25,7 @@ interface EditLinkModalProps {
 }
 
 export default function EditLinkModal({ link, onClose, onSave }: EditLinkModalProps) {
-  const { tags: availableTags } = useTags();
+  const { tags: availableTags, refetchTags } = useTags();
   const [url, setUrl] = useState(link.originalUrl);
   const [title, setTitle] = useState(link.title || "");
   const [expiresAt, setExpiresAt] = useState(
@@ -73,6 +73,8 @@ export default function EditLinkModal({ link, onClose, onSave }: EditLinkModalPr
         throw new Error(data.error || "Failed to update link");
       }
 
+      // Refresh tags in case new ones were created
+      await refetchTags();
       onSave();
       onClose();
     } catch (err: any) {

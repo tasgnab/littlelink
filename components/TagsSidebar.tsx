@@ -6,6 +6,7 @@ import { useTags } from "@/contexts/TagsContext";
 interface TagsSidebarProps {
   selectedTag: string | null;
   onSelectTag: (tag: string | null) => void;
+  onTagDeleted?: () => void;
 }
 
 interface Tag {
@@ -14,7 +15,7 @@ interface Tag {
   color: string;
 }
 
-export default function TagsSidebar({ selectedTag, onSelectTag }: TagsSidebarProps) {
+export default function TagsSidebar({ selectedTag, onSelectTag, onTagDeleted }: TagsSidebarProps) {
   const { tags, updateTag, removeTag } = useTags();
   const [editingTag, setEditingTag] = useState<Tag | null>(null);
   const [editName, setEditName] = useState("");
@@ -52,6 +53,11 @@ export default function TagsSidebar({ selectedTag, onSelectTag }: TagsSidebarPro
       // Clear selected tag if it was deleted
       if (selectedTag === tag.name) {
         onSelectTag(null);
+      }
+
+      // Notify parent to refresh links
+      if (onTagDeleted) {
+        onTagDeleted();
       }
     } catch (err: any) {
       alert(err.message);
