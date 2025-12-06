@@ -3,6 +3,8 @@
  * All environment variable access should go through this file
  */
 
+import { title } from "process";
+
 // Helper to validate required environment variables
 function getRequiredEnv(key: string, errorMessage?: string): string {
   const value = process.env[key];
@@ -163,6 +165,9 @@ export const clientConfig = {
   app: {
     url: getOptionalEnv("NEXT_PUBLIC_APP_URL", "http://localhost:3000"),
   },
+  gravatar: process.env.NEXT_PUBLIC_GRAVATAR || null,
+  title: process.env.NEXT_PUBLIC_TITLE || "LittleLink",
+  tagline: process.env.NEXT_PUBLIC_TITLE_TAGLINE || "Your personal link hub",
 } as const;
 
 /**

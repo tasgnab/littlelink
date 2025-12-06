@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { clientConfig } from "@/lib/config";
 
 export const metadata: Metadata = {
-  title: "LittleLink - URL Shortener",
-  description: "A modern link shortener built with Next.js",
+  title: clientConfig.title,
+  description: clientConfig.tagline,
 };
 
 export default function RootLayout({

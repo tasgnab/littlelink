@@ -399,3 +399,54 @@ export async function generateUniqueShortCode(): Promise<string> {
 
   throw new Error("Failed to generate unique short code");
 }
+
+export interface PublicLink {
+  id: string;
+  shortCode: string;
+  originalUrl: string;
+  title: string | null;
+  description: string | null;
+  clicks: number;
+  createdAt: Date;
+}
+
+export async function getLinktreeLinks(): Promise<PublicLink[]> {
+  try {
+    // Find the "littlelink" tag
+    const [tag] = await db
+      .select()
+      .from(tags)
+      .where(eq(tags.name, "littlelink"))
+      .limit(1);
+
+    if (!tag) {
+      return [];
+    }
+
+    // Get all active links with this tag
+    const linksWithTag = await db
+      .select({
+        id: links.id,
+        shortCode: links.shortCode,
+        originalUrl: links.originalUrl,
+        title: links.title,
+        description: links.description,
+        clicks: links.clicks,
+        createdAt: links.createdAt,
+      })
+      .from(links)
+      .innerJoin(linkTags, eq(links.id, linkTags.linkId))
+      .where(
+        and(
+          eq(linkTags.tagId, tag.id),
+          eq(links.isActive, true)
+        )
+      )
+      .orderBy(links.createdAt);
+
+    return linksWithTag;
+  } catch (error) {
+    console.error("Error fetching linktree links:", error);
+    return [];
+  }
+}
