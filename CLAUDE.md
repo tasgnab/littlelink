@@ -166,6 +166,15 @@ Setup:
 5. Set `MAXMIND_STORAGE_MODE=blob` in your Vercel environment variables
 6. On app startup, the database is downloaded from Vercel Blob to a temporary file
 
+**Automatic Weekly Updates (Vercel Cron):**
+The GeoLite2 database is automatically updated weekly via Vercel Cron Jobs:
+- Configured in `vercel.json` to run every Sunday at 2 AM UTC
+- Endpoint: `GET /api/cron/update-geodb`
+- Protected by `CRON_SECRET` environment variable (automatically set by Vercel)
+- Downloads fresh database from MaxMind and uploads to Vercel Blob
+- Requires `MAXMIND_LICENSE_KEY` and `BLOB_READ_WRITE_TOKEN` to be set in Vercel environment variables
+- No manual intervention required once deployed
+
 **How it works:**
 - Database initialized on app startup via `instrumentation.ts`
 - For blob mode, downloads ~70MB database to `/tmp` on cold starts (cached in memory)
@@ -178,7 +187,7 @@ Setup:
 - IP addresses are stored in the database for geolocation purposes
 - Geolocation happens server-side using a local database
 - No external API calls or third-party tracking
-- Database should be updated weekly for accuracy (re-run upload script)
+- Database is automatically updated weekly via Vercel Cron (for Vercel deployments)
 
 **Optional:**
 If `MAXMIND_LICENSE_KEY` is not set, geolocation is disabled and country/city fields remain null. The app functions normally without it.
@@ -254,6 +263,7 @@ Optional in `.env`:
 - `MAXMIND_DATABASE_PATH` - Custom path to GeoLite2 database (default: ./data/GeoLite2-City.mmdb)
 - `MAXMIND_STORAGE_MODE` - Storage mode: 'local' or 'blob' (default: 'local')
 - `BLOB_READ_WRITE_TOKEN` - Vercel Blob storage token (required for blob storage mode)
+- `CRON_SECRET` - Secret for protecting cron endpoints (automatically set by Vercel)
 
 **Important Note for Production:**
 - Next.js does NOT automatically load `.env` files in production mode (`npm start`)
