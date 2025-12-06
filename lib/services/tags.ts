@@ -1,6 +1,7 @@
 import { db } from "@/lib/db";
 import { tags } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
+import { generateRandomTagColor } from "@/lib/utils";
 
 export interface Tag {
   id: string;
@@ -58,7 +59,7 @@ export async function createTag(params: CreateTagParams): Promise<Tag> {
     .values({
       userId,
       name,
-      color: color || undefined,
+      color: color || generateRandomTagColor(),
     })
     .returning();
 

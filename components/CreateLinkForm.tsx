@@ -13,6 +13,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
   const [url, setUrl] = useState("");
   const [shortCode, setShortCode] = useState("");
   const [title, setTitle] = useState("");
+  const [expiresAt, setExpiresAt] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,6 +48,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
           url,
           shortCode: shortCode || undefined,
           title: title || undefined,
+          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : undefined,
           tags: selectedTags.length > 0 ? selectedTags : undefined,
         }),
       });
@@ -63,6 +65,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
       setUrl("");
       setShortCode("");
       setTitle("");
+      setExpiresAt("");
       setSelectedTags([]);
       onLinkCreated();
       refetchTags(); // Refresh tags in case new ones were created
@@ -98,7 +101,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
           />
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label
               htmlFor="shortCode"
@@ -130,6 +133,23 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="My Link"
+              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="expiresAt"
+              className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5"
+            >
+              Expiration Date (optional)
+            </label>
+            <input
+              type="datetime-local"
+              id="expiresAt"
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value)}
+              min={new Date().toISOString().slice(0, 16)}
               className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 text-sm placeholder:text-gray-500 dark:placeholder:text-gray-400"
             />
           </div>

@@ -18,6 +18,7 @@ interface Link {
   title: string | null;
   clicks: number;
   isActive: boolean;
+  expiresAt: Date | null;
   createdAt: string;
   tags: Tag[];
 }

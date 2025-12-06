@@ -14,6 +14,7 @@ interface Link {
   shortCode: string;
   originalUrl: string;
   title: string | null;
+  expiresAt: Date | null;
   tags: Tag[];
 }
 
@@ -27,6 +28,9 @@ export default function EditLinkModal({ link, onClose, onSave }: EditLinkModalPr
   const { tags: availableTags } = useTags();
   const [url, setUrl] = useState(link.originalUrl);
   const [title, setTitle] = useState(link.title || "");
+  const [expiresAt, setExpiresAt] = useState(
+    link.expiresAt ? new Date(link.expiresAt).toISOString().slice(0, 16) : ""
+  );
   const [selectedTags, setSelectedTags] = useState<string[]>(link.tags.map((t) => t.name));
   const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -58,6 +62,7 @@ export default function EditLinkModal({ link, onClose, onSave }: EditLinkModalPr
         body: JSON.stringify({
           url,
           title: title || undefined,
+          expiresAt: expiresAt ? new Date(expiresAt).toISOString() : null,
           tags: selectedTags,
         }),
       });
@@ -129,6 +134,23 @@ export default function EditLinkModal({ link, onClose, onSave }: EditLinkModalPr
                 onChange={(e) => setTitle(e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 text-sm"
               />
+            </div>
+
+            <div>
+              <label htmlFor="expiresAt" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                Expiration Date (optional)
+              </label>
+              <input
+                type="datetime-local"
+                id="expiresAt"
+                value={expiresAt}
+                onChange={(e) => setExpiresAt(e.target.value)}
+                min={new Date().toISOString().slice(0, 16)}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white dark:bg-gray-700 text-sm"
+              />
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                Link will automatically expire and become inactive after this date
+              </p>
             </div>
 
             <div>

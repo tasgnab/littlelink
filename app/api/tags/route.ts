@@ -3,6 +3,7 @@ import { createTagSchema } from "@/lib/validations";
 import { requireWriteAuth } from "@/lib/api-auth";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 import * as tagsService from "@/lib/services/tags";
+import { generateRandomTagColor } from "@/lib/utils";
 
 // GET /api/tags - List all tags
 // Supports both session and API key authentication (read-only)
@@ -45,7 +46,7 @@ async function postHandler(request: NextRequest) {
     const newTag = await tagsService.createTag({
       userId: auth.userId,
       name,
-      color: color || "#3b82f6",
+      color: color || generateRandomTagColor(),
     });
 
     return NextResponse.json({ tag: newTag }, { status: 201 });

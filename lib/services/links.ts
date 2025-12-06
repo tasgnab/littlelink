@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { links, tags, linkTags } from "@/lib/db/schema";
 import { eq, desc, inArray, and, sql } from "drizzle-orm";
-import { generateUniqueShortCode } from "@/lib/utils";
+import { generateUniqueShortCode, generateRandomTagColor } from "@/lib/utils";
 
 export interface LinkWithTags {
   id: string;
@@ -224,6 +224,7 @@ export async function createLink(params: CreateLinkParams): Promise<LinkWithTags
           .values({
             userId,
             name: tagName,
+            color: generateRandomTagColor(),
           })
           .returning();
       }
@@ -309,6 +310,7 @@ export async function updateLink(
             .values({
               userId,
               name: tagName,
+              color: generateRandomTagColor(),
             })
             .returning();
         }
