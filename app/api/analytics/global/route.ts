@@ -1,0 +1,34 @@
+import { NextRequest, NextResponse } from "next/server";
+import { requireWriteAuth } from "@/lib/api-auth";
+import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
+import * as analyticsService from "@/lib/services/analytics";
+
+// GET /api/analytics/global - Get global analytics across all links
+// Supports both session and API key authentication (read-only)
+async function getHandler(request: NextRequest) {
+  try {
+    const auth = await requireWriteAuth(request);
+    if (auth instanceof Response) return auth;
+
+    const searchParams = request.nextUrl.searchParams;
+    const days = parseInt(searchParams.get("days") || "30");
+
+    const globalAnalytics = await analyticsService.getGlobalAnalytics(
+      auth.userId,
+      days
+    );
+
+    return NextResponse.json(globalAnalytics);
+  } catch (error) {
+    console.error("Error fetching global analytics:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch global analytics" },
+      { status: 500 }
+    );
+  }
+}
+
+// Export rate-limited handler
+export async function GET(request: NextRequest) {
+  return applyRateLimit(request, rateLimiters.api, () => getHandler(request));
+}

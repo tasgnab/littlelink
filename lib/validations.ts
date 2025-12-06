@@ -9,6 +9,11 @@ const RESERVED_ROUTES = [
   "favicon.ico",
 ];
 
+export const createTagSchema = z.object({
+  name: z.string().min(1, "Tag name is required").max(50, "Tag name is too long"),
+  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid color format").optional(),
+});
+
 export const createLinkSchema = z.object({
   url: z.string().url("Please enter a valid URL"),
   shortCode: z
@@ -27,7 +32,7 @@ export const createLinkSchema = z.object({
   title: z.string().optional(),
   description: z.string().optional(),
   expiresAt: z.string().datetime().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(createTagSchema).optional(),
 });
 
 export const updateLinkSchema = z.object({
@@ -36,13 +41,9 @@ export const updateLinkSchema = z.object({
   description: z.string().optional(),
   isActive: z.boolean().optional(),
   expiresAt: z.string().datetime().nullable().optional(),
-  tags: z.array(z.string()).optional(),
+  tags: z.array(createTagSchema).optional(),
 });
 
-export const createTagSchema = z.object({
-  name: z.string().min(1, "Tag name is required").max(50, "Tag name is too long"),
-  color: z.string().regex(/^#[0-9A-Fa-f]{6}$/, "Invalid color format").optional(),
-});
 
 export const updateTagSchema = z.object({
   name: z.string().min(1, "Tag name is required").max(50, "Tag name is too long").optional(),

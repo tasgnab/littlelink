@@ -1,7 +1,10 @@
 import { db } from "@/lib/db";
 import { links, tags, linkTags } from "@/lib/db/schema";
 import { eq, desc, inArray, and, sql } from "drizzle-orm";
-import { generateUniqueShortCode, generateRandomTagColor } from "@/lib/utils";
+import z from "zod";
+import { create } from "domain";
+import { createTagSchema } from "../validations";
+import { customAlphabet } from "nanoid";
 
 export interface LinkWithTags {
   id: string;
@@ -40,6 +43,7 @@ export interface ListLinksParams {
   tagFilter?: string | null;
 }
 
+type Tag = z.infer<typeof createTagSchema>;
 export interface CreateLinkParams {
   userId: string;
   url: string;
@@ -47,7 +51,7 @@ export interface CreateLinkParams {
   title?: string;
   description?: string;
   expiresAt?: Date;
-  tags?: string[];
+  tags?: Tag[];
 }
 
 export interface UpdateLinkParams {
@@ -56,7 +60,7 @@ export interface UpdateLinkParams {
   description?: string | null;
   isActive?: boolean;
   expiresAt?: Date | null;
-  tags?: string[];
+  tags?: Tag[];
 }
 
 export async function listLinks(params: ListLinksParams): Promise<{
@@ -125,8 +129,8 @@ export async function listLinks(params: ListLinksParams): Promise<{
   // Filter by tag if specified
   const filteredLinks = tagFilter
     ? linksWithTags.filter((link) =>
-        link.tags.some((tag) => tag.name === tagFilter)
-      )
+      link.tags.some((tag) => tag.name === tagFilter)
+    )
     : linksWithTags;
 
   // Return total count for filtered or unfiltered results
@@ -214,7 +218,7 @@ export async function createLink(params: CreateLinkParams): Promise<LinkWithTags
       let [tag] = await db
         .select()
         .from(tags)
-        .where(and(eq(tags.userId, userId), eq(tags.name, tagName)))
+        .where(and(eq(tags.userId, userId), eq(tags.name, tagName.name)))
         .limit(1);
 
       // Create tag if it doesn't exist
@@ -223,8 +227,8 @@ export async function createLink(params: CreateLinkParams): Promise<LinkWithTags
           .insert(tags)
           .values({
             userId,
-            name: tagName,
-            color: generateRandomTagColor(),
+            name: tagName.name,
+            color: tagName.color,
           })
           .returning();
       }
@@ -300,7 +304,7 @@ export async function updateLink(
         let [tag] = await db
           .select()
           .from(tags)
-          .where(and(eq(tags.userId, userId), eq(tags.name, tagName)))
+          .where(and(eq(tags.userId, userId), eq(tags.name, tagName.name)))
           .limit(1);
 
         // Create tag if it doesn't exist
@@ -309,8 +313,8 @@ export async function updateLink(
             .insert(tags)
             .values({
               userId,
-              name: tagName,
-              color: generateRandomTagColor(),
+              name: tagName.name,
+              color: tagName.color,
             })
             .returning();
         }
@@ -366,4 +370,32 @@ export async function getLinkByShortCode(shortCode: string): Promise<Link | null
   return {
     ...link,
   };
+}
+
+const nanoid = customAlphabet(
+  "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+  6
+);
+
+
+export async function generateUniqueShortCode(): Promise<string> {
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  while (attempts < maxAttempts) {
+    const shortCode = nanoid();
+    const existing = await db
+      .select()
+      .from(links)
+      .where(eq(links.shortCode, shortCode))
+      .limit(1);
+
+    if (existing.length === 0) {
+      return shortCode;
+    }
+
+    attempts++;
+  }
+
+  throw new Error("Failed to generate unique short code");
 }

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { clicks, links } from "@/lib/db/schema";
-import { eq, and, gte } from "drizzle-orm";
+import { clicks, links, linkTags, tags } from "@/lib/db/schema";
+import { eq, and, gte, sql, desc, count as drizzleCount, inArray } from "drizzle-orm";
 import { NextRequest } from "next/server";
 import { Link } from "./links";
 import { parseUserAgent } from "../utils";
@@ -133,4 +133,285 @@ export async function trackVisit(request: NextRequest, link: Link) {
     .catch((error) => {
       console.error("Error tracking click:", error);
     });
+}
+
+// Tag Analytics
+export interface TagAnalytics {
+  tagId: string;
+  tagName: string;
+  tagColor: string;
+  totalClicks: number;
+  linksCount: number;
+  clickTrend: { date: string; clicks: number }[];
+}
+
+export async function getTagAnalytics(
+  userId: string,
+  days: number = 30
+): Promise<TagAnalytics[]> {
+  // Calculate date threshold
+  const dateThreshold = new Date();
+  dateThreshold.setDate(dateThreshold.getDate() - days);
+
+  // Get all tags with their link counts and click counts
+  const tagStats = await db
+    .select({
+      tagId: tags.id,
+      tagName: tags.name,
+      tagColor: tags.color,
+      linkId: linkTags.linkId,
+    })
+    .from(tags)
+    .leftJoin(linkTags, eq(tags.id, linkTags.tagId))
+    .where(eq(tags.userId, userId));
+
+  // Group by tag and get unique link IDs
+  const tagMap = new Map<string, {
+    tagId: string;
+    tagName: string;
+    tagColor: string;
+    linkIds: Set<string>;
+  }>();
+
+  for (const row of tagStats) {
+    if (!tagMap.has(row.tagId)) {
+      tagMap.set(row.tagId, {
+        tagId: row.tagId,
+        tagName: row.tagName,
+        tagColor: row.tagColor,
+        linkIds: new Set(),
+      });
+    }
+    if (row.linkId) {
+      tagMap.get(row.tagId)!.linkIds.add(row.linkId);
+    }
+  }
+
+  // For each tag, get click data
+  const result: TagAnalytics[] = [];
+
+  for (const [tagId, tagData] of tagMap) {
+    if (tagData.linkIds.size === 0) {
+      result.push({
+        tagId: tagData.tagId,
+        tagName: tagData.tagName,
+        tagColor: tagData.tagColor,
+        totalClicks: 0,
+        linksCount: 0,
+        clickTrend: [],
+      });
+      continue;
+    }
+
+    // Get all clicks for links with this tag
+    const linkIdsArray = Array.from(tagData.linkIds);
+    const tagClicks = await db
+      .select({
+        timestamp: clicks.timestamp,
+      })
+      .from(clicks)
+      .where(
+        and(
+          inArray(clicks.linkId, linkIdsArray),
+          gte(clicks.timestamp, dateThreshold)
+        )
+      );
+
+    // Group clicks by date for trend
+    const clicksByDate = new Map<string, number>();
+    for (const click of tagClicks) {
+      const dateStr = click.timestamp.toISOString().split('T')[0];
+      clicksByDate.set(dateStr, (clicksByDate.get(dateStr) || 0) + 1);
+    }
+
+    const clickTrend = Array.from(clicksByDate.entries())
+      .map(([date, clicks]) => ({ date, clicks }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    result.push({
+      tagId: tagData.tagId,
+      tagName: tagData.tagName,
+      tagColor: tagData.tagColor,
+      totalClicks: tagClicks.length,
+      linksCount: tagData.linkIds.size,
+      clickTrend,
+    });
+  }
+
+  // Sort by total clicks descending
+  return result.sort((a, b) => b.totalClicks - a.totalClicks);
+}
+
+// Global Analytics
+export interface GlobalAnalytics {
+  overview: {
+    totalLinks: number;
+    totalClicks: number;
+    activeLinks: number;
+    uniqueDevices: number;
+    uniqueCountries: number;
+  };
+  clickTrend: { date: string; clicks: number }[];
+  topCountries: { country: string; clicks: number }[];
+  topCities: { city: string; country: string; clicks: number }[];
+  deviceStats: { device: string; clicks: number; percentage: number }[];
+  browserStats: { browser: string; clicks: number; percentage: number }[];
+  osStats: { os: string; clicks: number; percentage: number }[];
+}
+
+export async function getGlobalAnalytics(
+  userId: string,
+  days: number = 30
+): Promise<GlobalAnalytics> {
+  // Calculate date threshold
+  const dateThreshold = new Date();
+  dateThreshold.setDate(dateThreshold.getDate() - days);
+
+  // Get user's links
+  const userLinks = await db
+    .select({ id: links.id })
+    .from(links)
+    .where(eq(links.userId, userId));
+
+  const linkIds = userLinks.map(l => l.id);
+
+  if (linkIds.length === 0) {
+    return {
+      overview: {
+        totalLinks: 0,
+        totalClicks: 0,
+        activeLinks: 0,
+        uniqueDevices: 0,
+        uniqueCountries: 0,
+      },
+      clickTrend: [],
+      topCountries: [],
+      topCities: [],
+      deviceStats: [],
+      browserStats: [],
+      osStats: [],
+    };
+  }
+
+  // Get overview stats
+  const [linkStats] = await db
+    .select({
+      totalLinks: drizzleCount(links.id),
+      totalClicks: sql<number>`CAST(SUM(${links.clicks}) AS INTEGER)`,
+      activeLinks: sql<number>`CAST(SUM(CASE WHEN ${links.isActive} = true THEN 1 ELSE 0 END) AS INTEGER)`,
+    })
+    .from(links)
+    .where(eq(links.userId, userId));
+
+  // Get all clicks in time period
+  const allClicks = await db
+    .select()
+    .from(clicks)
+    .where(
+      and(
+        inArray(clicks.linkId, linkIds),
+        gte(clicks.timestamp, dateThreshold)
+      )
+    );
+
+  // Process click data
+  const clicksByDate = new Map<string, number>();
+  const countryCounts = new Map<string, number>();
+  const cityCounts = new Map<string, { city: string; country: string; count: number }>();
+  const deviceCounts = new Map<string, number>();
+  const browserCounts = new Map<string, number>();
+  const osCounts = new Map<string, number>();
+  const uniqueDevices = new Set<string>();
+  const uniqueCountries = new Set<string>();
+
+  for (const click of allClicks) {
+    // Date trend
+    const dateStr = click.timestamp.toISOString().split('T')[0];
+    clicksByDate.set(dateStr, (clicksByDate.get(dateStr) || 0) + 1);
+
+    // Country stats
+    const country = click.country || 'Unknown';
+    countryCounts.set(country, (countryCounts.get(country) || 0) + 1);
+    if (country !== 'Unknown') uniqueCountries.add(country);
+
+    // City stats
+    const city = click.city || 'Unknown';
+    const cityKey = `${city}|${country}`;
+    const existing = cityCounts.get(cityKey);
+    if (existing) {
+      existing.count++;
+    } else {
+      cityCounts.set(cityKey, { city, country, count: 1 });
+    }
+
+    // Device stats
+    const device = click.device || 'unknown';
+    deviceCounts.set(device, (deviceCounts.get(device) || 0) + 1);
+    if (device !== 'unknown') uniqueDevices.add(device);
+
+    // Browser stats
+    const browser = click.browser || 'unknown';
+    browserCounts.set(browser, (browserCounts.get(browser) || 0) + 1);
+
+    // OS stats
+    const os = click.os || 'unknown';
+    osCounts.set(os, (osCounts.get(os) || 0) + 1);
+  }
+
+  const totalClicksInPeriod = allClicks.length;
+
+  // Format results
+  const clickTrend = Array.from(clicksByDate.entries())
+    .map(([date, clicks]) => ({ date, clicks }))
+    .sort((a, b) => a.date.localeCompare(b.date));
+
+  const topCountries = Array.from(countryCounts.entries())
+    .map(([country, clicks]) => ({ country, clicks }))
+    .sort((a, b) => b.clicks - a.clicks)
+    .slice(0, 10);
+
+  const topCities = Array.from(cityCounts.values())
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10)
+    .map(({ city, country, count }) => ({ city, country, clicks: count }));
+
+  const deviceStats = Array.from(deviceCounts.entries())
+    .map(([device, clicks]) => ({
+      device,
+      clicks,
+      percentage: totalClicksInPeriod > 0 ? (clicks / totalClicksInPeriod) * 100 : 0,
+    }))
+    .sort((a, b) => b.clicks - a.clicks);
+
+  const browserStats = Array.from(browserCounts.entries())
+    .map(([browser, clicks]) => ({
+      browser,
+      clicks,
+      percentage: totalClicksInPeriod > 0 ? (clicks / totalClicksInPeriod) * 100 : 0,
+    }))
+    .sort((a, b) => b.clicks - a.clicks);
+
+  const osStats = Array.from(osCounts.entries())
+    .map(([os, clicks]) => ({
+      os,
+      clicks,
+      percentage: totalClicksInPeriod > 0 ? (clicks / totalClicksInPeriod) * 100 : 0,
+    }))
+    .sort((a, b) => b.clicks - a.clicks);
+
+  return {
+    overview: {
+      totalLinks: linkStats?.totalLinks || 0,
+      totalClicks: linkStats?.totalClicks || 0,
+      activeLinks: linkStats?.activeLinks || 0,
+      uniqueDevices: uniqueDevices.size,
+      uniqueCountries: uniqueCountries.size,
+    },
+    clickTrend,
+    topCountries,
+    topCities,
+    deviceStats,
+    browserStats,
+    osStats,
+  };
 }

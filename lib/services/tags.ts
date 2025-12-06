@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 import { tags } from "@/lib/db/schema";
 import { eq, and, desc } from "drizzle-orm";
-import { generateRandomTagColor } from "@/lib/utils";
+import { generateRandomTagColor } from "@/lib/utils-client";
 
 export interface Tag {
   id: string;

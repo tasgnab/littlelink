@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { getAppUrl } from "@/lib/config";
-import { useApp } from "@/contexts/AppContext";
+import { Tag, useApp } from "@/contexts/AppContext";
+import { generateRandomTagColor } from "@/lib/utils-client";
 
 interface CreateLinkFormProps {
   onLinkCreated: () => void;
@@ -14,7 +15,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
   const [shortCode, setShortCode] = useState("");
   const [title, setTitle] = useState("");
   const [expiresAt, setExpiresAt] = useState("");
-  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<Tag[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -22,14 +23,19 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
 
   const handleAddTag = (tagName: string) => {
     const trimmed = tagName.trim();
-    if (trimmed && !selectedTags.includes(trimmed)) {
-      setSelectedTags([...selectedTags, trimmed]);
+    if (trimmed && !selectedTags.map(t => t.name).includes(trimmed)) {
+      const newTag = availableTags.find(t => t.name === trimmed) || {
+        id: "",
+        name: trimmed,
+        color: generateRandomTagColor(), // default gray color for new tags
+      };
+      setSelectedTags([...selectedTags, newTag]);
       setTagInput("");
     }
   };
 
   const handleRemoveTag = (tagName: string) => {
-    setSelectedTags(selectedTags.filter((t) => t !== tagName));
+    setSelectedTags(selectedTags.filter((t) => t.name !== tagName));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -165,13 +171,14 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
           <div className="flex flex-wrap gap-2 mb-2">
             {selectedTags.map((tag) => (
               <span
-                key={tag}
-                className="inline-flex items-center gap-1 px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs font-medium rounded"
+                key={tag.name}
+                style={{ backgroundColor: tag.color }}
+                className="text-xs px-2 py-1 text-white rounded hover:opacity-80 transition-opacity"
               >
-                {tag}
+                {tag.name}
                 <button
                   type="button"
-                  onClick={() => handleRemoveTag(tag)}
+                  onClick={() => handleRemoveTag(tag.name)}
                   className="hover:text-blue-900 dark:hover:text-blue-100"
                 >
                   ×
@@ -206,7 +213,7 @@ export default function CreateLinkForm({ onLinkCreated }: CreateLinkFormProps) {
             <div className="mt-2 flex flex-wrap gap-2">
               <span className="text-xs text-gray-500 dark:text-gray-400">Quick add:</span>
               {availableTags
-                .filter((t) => !selectedTags.includes(t.name))
+                .filter((t) => !selectedTags.map(t1 => t1.name).includes(t.name))
                 .slice(0, 5)
                 .map((tag) => (
                   <button
