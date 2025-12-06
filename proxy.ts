@@ -10,8 +10,10 @@ export default async function proxy(request: NextRequest) {
   // 2. API auth routes (/api/auth/*)
   // 3. Short URL redirects (/:shortCode)
   // 4. Static files and Next.js internals
+  // 5. Root page (/)
   const isAuthPage = pathname.startsWith("/auth");
   const isAuthApi = pathname.startsWith("/api/auth");
+  const isRootPage = pathname === "/";
   const isStaticFile =
     pathname.startsWith("/_next") ||
     pathname.startsWith("/favicon.ico") ||
@@ -21,10 +23,9 @@ export default async function proxy(request: NextRequest) {
   const isShortCode =
     pathname.split("/").filter(Boolean).length === 1 &&
     !pathname.startsWith("/dashboard") &&
-    !pathname.startsWith("/auth") &&
-    pathname !== "/";
+    !pathname.startsWith("/auth");
 
-  if (isAuthPage || isAuthApi || isStaticFile || isShortCode) {
+  if (isAuthPage || isAuthApi || isRootPage || isStaticFile || isShortCode) {
     return NextResponse.next();
   }
 
