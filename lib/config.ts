@@ -3,8 +3,6 @@
  * All environment variable access should go through this file
  */
 
-import { title } from "process";
-
 // Helper to validate required environment variables
 function getRequiredEnv(key: string, errorMessage?: string): string {
   const value = process.env[key];
@@ -37,122 +35,84 @@ function validateUrl(url: string): boolean {
   }
 }
 
+// Validate allowed user email
+const allowedEmail = getRequiredEnv(
+  "ALLOWED_USER_EMAIL",
+  "ALLOWED_USER_EMAIL is required. Set it to the email address that should have access."
+);
+if (!validateEmail(allowedEmail)) {
+  throw new Error(
+    `ALLOWED_USER_EMAIL must be a valid email address. Got: ${allowedEmail}`
+  );
+}
+
+// Validate app URL
+const appUrl = getOptionalEnv("NEXT_PUBLIC_APP_URL", "http://localhost:3000");
+if (!validateUrl(appUrl)) {
+  throw new Error(`NEXT_PUBLIC_APP_URL must be a valid URL. Got: ${appUrl}`);
+}
+
 /**
  * Server-side configuration
  * These variables are only accessible on the server
  */
 export const serverConfig = {
   database: {
-    // Lazy getter to avoid validation during build time
-    get url() {
-      return getRequiredEnv(
-        "DATABASE_URL",
-        "DATABASE_URL is required. Please set it in your .env file."
-      );
-    },
+    url: getRequiredEnv(
+      "DATABASE_URL",
+      "DATABASE_URL is required. Please set it in your .env file."
+    ),
   },
 
   auth: {
-    // NextAuth configuration - lazy getters to avoid validation during build time
-    get nextAuthUrl() {
-      return getRequiredEnv(
-        "NEXTAUTH_URL",
-        "NEXTAUTH_URL is required for authentication. Set it to your app's URL (e.g., http://localhost:3000)"
-      );
-    },
-    get nextAuthSecret() {
-      return getRequiredEnv(
-        "NEXTAUTH_SECRET",
-        "NEXTAUTH_SECRET is required. Generate one with: openssl rand -base64 32"
-      );
-    },
-
-    // Google OAuth
-    get googleClientId() {
-      return getRequiredEnv(
-        "GOOGLE_CLIENT_ID",
-        "GOOGLE_CLIENT_ID is required for Google OAuth. Get it from Google Cloud Console."
-      );
-    },
-    get googleClientSecret() {
-      return getRequiredEnv(
-        "GOOGLE_CLIENT_SECRET",
-        "GOOGLE_CLIENT_SECRET is required for Google OAuth. Get it from Google Cloud Console."
-      );
-    },
-
-    // Allowed user email
-    get allowedUserEmail() {
-      const email = getRequiredEnv(
-        "ALLOWED_USER_EMAIL",
-        "ALLOWED_USER_EMAIL is required. Set it to the email address that should have access."
-      );
-      if (!validateEmail(email)) {
-        throw new Error(
-          `ALLOWED_USER_EMAIL must be a valid email address. Got: ${email}`
-        );
-      }
-      return email;
-    },
+    nextAuthUrl: getRequiredEnv(
+      "NEXTAUTH_URL",
+      "NEXTAUTH_URL is required for authentication. Set it to your app's URL (e.g., http://localhost:3000)"
+    ),
+    nextAuthSecret: getRequiredEnv(
+      "NEXTAUTH_SECRET",
+      "NEXTAUTH_SECRET is required. Generate one with: openssl rand -base64 32"
+    ),
+    googleClientId: getRequiredEnv(
+      "GOOGLE_CLIENT_ID",
+      "GOOGLE_CLIENT_ID is required for Google OAuth. Get it from Google Cloud Console."
+    ),
+    googleClientSecret: getRequiredEnv(
+      "GOOGLE_CLIENT_SECRET",
+      "GOOGLE_CLIENT_SECRET is required for Google OAuth. Get it from Google Cloud Console."
+    ),
+    allowedUserEmail: allowedEmail,
   },
 
   app: {
-    // App URL for server-side operations (like generating QR codes)
-    get url() {
-      const url = getOptionalEnv("NEXT_PUBLIC_APP_URL", "http://localhost:3000");
-      if (!validateUrl(url)) {
-        throw new Error(
-          `NEXT_PUBLIC_APP_URL must be a valid URL. Got: ${url}`
-        );
-      }
-      return url;
-    },
+    url: appUrl,
   },
 
-  // Flag for checking if running in GitHub Actions
   isGitHubActions: process.env.GITHUB_ACTIONS === "true",
 
-  // MaxMind GeoLite2 configuration (optional)
   maxmind: {
-    // License key from MaxMind account (optional)
-    get licenseKey() {
-      return process.env.MAXMIND_LICENSE_KEY || null;
-    },
-    // Path to GeoLite2 database file (for local storage)
-    get databasePath() {
-      return getOptionalEnv("MAXMIND_DATABASE_PATH", "./data/GeoLite2-City.mmdb");
-    },
-    // Vercel Blob storage token (for serverless deployments)
-    get blobToken() {
-      return process.env.BLOB_READ_WRITE_TOKEN || null;
-    },
-    // Storage mode: 'local' or 'blob'
-    get storageMode() {
-      return getOptionalEnv("MAXMIND_STORAGE_MODE", "local") as "local" | "blob";
-    },
+    licenseKey: process.env.MAXMIND_LICENSE_KEY || null,
+    databasePath: getOptionalEnv("MAXMIND_DATABASE_PATH", "./data/GeoLite2-City.mmdb"),
+    blobToken: process.env.BLOB_READ_WRITE_TOKEN || null,
+    storageMode: getOptionalEnv("MAXMIND_STORAGE_MODE", "local") as "local" | "blob",
   },
 
-  // Rate limiting configuration
   rateLimit: {
-    // API routes rate limit (requests per minute)
     api: {
       requests: parseInt(getOptionalEnv("RATE_LIMIT_API_REQUESTS", "100")),
-      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_API_WINDOW_MS", "60000")), // 1 minute
+      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_API_WINDOW_MS", "60000")),
     },
-    // Redirect routes rate limit (requests per minute) - higher for primary function
     redirect: {
       requests: parseInt(getOptionalEnv("RATE_LIMIT_REDIRECT_REQUESTS", "300")),
-      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_REDIRECT_WINDOW_MS", "60000")), // 1 minute
+      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_REDIRECT_WINDOW_MS", "60000")),
     },
-    // Auth routes rate limit (requests per 15 minutes) - prevent brute force
     auth: {
       requests: parseInt(getOptionalEnv("RATE_LIMIT_AUTH_REQUESTS", "10")),
-      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_AUTH_WINDOW_MS", "900000")), // 15 minutes
+      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_AUTH_WINDOW_MS", "900000")),
     },
-    // Strict rate limit for sensitive operations (requests per minute)
     strict: {
       requests: parseInt(getOptionalEnv("RATE_LIMIT_STRICT_REQUESTS", "5")),
-      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_STRICT_WINDOW_MS", "60000")), // 1 minute
+      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_STRICT_WINDOW_MS", "60000")),
     },
   },
 } as const;
@@ -185,43 +145,12 @@ export function getAppUrl(): string {
 }
 
 /**
- * Type-safe config object that exports only what's needed
- * Uses getters to maintain lazy evaluation
+ * Main config export - alias for serverConfig
+ * All validation happens at module load time
  */
-export const config = {
-  database: {
-    get url() {
-      return serverConfig.database.url;
-    },
-  },
-  auth: {
-    get nextAuthUrl() {
-      return serverConfig.auth.nextAuthUrl;
-    },
-    get nextAuthSecret() {
-      return serverConfig.auth.nextAuthSecret;
-    },
-    get googleClientId() {
-      return serverConfig.auth.googleClientId;
-    },
-    get googleClientSecret() {
-      return serverConfig.auth.googleClientSecret;
-    },
-    get allowedUserEmail() {
-      return serverConfig.auth.allowedUserEmail;
-    },
-  },
-  app: {
-    get url() {
-      return serverConfig.app.url;
-    },
-  },
-  maxmind: serverConfig.maxmind,
-  rateLimit: serverConfig.rateLimit,
-  isGitHubActions: serverConfig.isGitHubActions,
-};
+export const config = serverConfig;
 
 // Export types for TypeScript
-export type Config = typeof config;
+export type Config = typeof serverConfig;
 export type ServerConfig = typeof serverConfig;
 export type ClientConfig = typeof clientConfig;
