@@ -3,20 +3,22 @@
  * All environment variable access should go through this file
  */
 
-// Helper to validate required environment variables
-function getRequiredEnv(key: string, errorMessage?: string): string {
-  const value = process.env[key];
+// Check if running on server (where server-side env vars are available)
+const isServer = typeof window === "undefined";
+
+// Helper to validate required environment variables (server-side only)
+function requireEnv(value: string | undefined, name: string, message?: string): string {
+  // Skip validation during client-side bundling
+  if (!isServer) {
+    return ""; // Return empty string for client-side, won't be used
+  }
+
   if (!value) {
     throw new Error(
-      errorMessage || `Missing required environment variable: ${key}`
+      message || `Missing required environment variable: ${name}`
     );
   }
   return value;
-}
-
-// Helper to get optional environment variables with defaults
-function getOptionalEnv(key: string, defaultValue: string): string {
-  return process.env[key] || defaultValue;
 }
 
 // Helper to validate email format
@@ -35,20 +37,21 @@ function validateUrl(url: string): boolean {
   }
 }
 
-// Validate allowed user email
-const allowedEmail = getRequiredEnv(
+// Validate allowed user email (server-side only)
+const allowedEmail = requireEnv(
+  process.env.ALLOWED_USER_EMAIL,
   "ALLOWED_USER_EMAIL",
   "ALLOWED_USER_EMAIL is required. Set it to the email address that should have access."
 );
-if (!validateEmail(allowedEmail)) {
+if (isServer && allowedEmail && !validateEmail(allowedEmail)) {
   throw new Error(
     `ALLOWED_USER_EMAIL must be a valid email address. Got: ${allowedEmail}`
   );
 }
 
 // Validate app URL
-const appUrl = getOptionalEnv("NEXT_PUBLIC_APP_URL", "http://localhost:3000");
-if (!validateUrl(appUrl)) {
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+if (appUrl && !validateUrl(appUrl)) {
   throw new Error(`NEXT_PUBLIC_APP_URL must be a valid URL. Got: ${appUrl}`);
 }
 
@@ -58,26 +61,31 @@ if (!validateUrl(appUrl)) {
  */
 export const serverConfig = {
   database: {
-    url: getRequiredEnv(
+    url: requireEnv(
+      process.env.DATABASE_URL,
       "DATABASE_URL",
       "DATABASE_URL is required. Please set it in your .env file."
     ),
   },
 
   auth: {
-    nextAuthUrl: getRequiredEnv(
+    nextAuthUrl: requireEnv(
+      process.env.NEXTAUTH_URL,
       "NEXTAUTH_URL",
       "NEXTAUTH_URL is required for authentication. Set it to your app's URL (e.g., http://localhost:3000)"
     ),
-    nextAuthSecret: getRequiredEnv(
+    nextAuthSecret: requireEnv(
+      process.env.NEXTAUTH_SECRET,
       "NEXTAUTH_SECRET",
       "NEXTAUTH_SECRET is required. Generate one with: openssl rand -base64 32"
     ),
-    googleClientId: getRequiredEnv(
+    googleClientId: requireEnv(
+      process.env.GOOGLE_CLIENT_ID,
       "GOOGLE_CLIENT_ID",
       "GOOGLE_CLIENT_ID is required for Google OAuth. Get it from Google Cloud Console."
     ),
-    googleClientSecret: getRequiredEnv(
+    googleClientSecret: requireEnv(
+      process.env.GOOGLE_CLIENT_SECRET,
       "GOOGLE_CLIENT_SECRET",
       "GOOGLE_CLIENT_SECRET is required for Google OAuth. Get it from Google Cloud Console."
     ),
@@ -92,27 +100,27 @@ export const serverConfig = {
 
   maxmind: {
     licenseKey: process.env.MAXMIND_LICENSE_KEY || null,
-    databasePath: getOptionalEnv("MAXMIND_DATABASE_PATH", "./data/GeoLite2-City.mmdb"),
+    databasePath: process.env.MAXMIND_DATABASE_PATH || "./data/GeoLite2-City.mmdb",
     blobToken: process.env.BLOB_READ_WRITE_TOKEN || null,
-    storageMode: getOptionalEnv("MAXMIND_STORAGE_MODE", "local") as "local" | "blob",
+    storageMode: (process.env.MAXMIND_STORAGE_MODE || "local") as "local" | "blob",
   },
 
   rateLimit: {
     api: {
-      requests: parseInt(getOptionalEnv("RATE_LIMIT_API_REQUESTS", "100")),
-      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_API_WINDOW_MS", "60000")),
+      requests: parseInt(process.env.RATE_LIMIT_API_REQUESTS || "100"),
+      windowMs: parseInt(process.env.RATE_LIMIT_API_WINDOW_MS || "60000"),
     },
     redirect: {
-      requests: parseInt(getOptionalEnv("RATE_LIMIT_REDIRECT_REQUESTS", "300")),
-      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_REDIRECT_WINDOW_MS", "60000")),
+      requests: parseInt(process.env.RATE_LIMIT_REDIRECT_REQUESTS || "300"),
+      windowMs: parseInt(process.env.RATE_LIMIT_REDIRECT_WINDOW_MS || "60000"),
     },
     auth: {
-      requests: parseInt(getOptionalEnv("RATE_LIMIT_AUTH_REQUESTS", "10")),
-      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_AUTH_WINDOW_MS", "900000")),
+      requests: parseInt(process.env.RATE_LIMIT_AUTH_REQUESTS || "10"),
+      windowMs: parseInt(process.env.RATE_LIMIT_AUTH_WINDOW_MS || "900000"),
     },
     strict: {
-      requests: parseInt(getOptionalEnv("RATE_LIMIT_STRICT_REQUESTS", "5")),
-      windowMs: parseInt(getOptionalEnv("RATE_LIMIT_STRICT_WINDOW_MS", "60000")),
+      requests: parseInt(process.env.RATE_LIMIT_STRICT_REQUESTS || "5"),
+      windowMs: parseInt(process.env.RATE_LIMIT_STRICT_WINDOW_MS || "60000"),
     },
   },
 } as const;
