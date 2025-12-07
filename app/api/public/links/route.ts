@@ -1,56 +1,51 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { links, tags, linkTags } from "@/lib/db/schema";
-import { eq, and } from "drizzle-orm";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
+import { getAppUrl } from "@/lib/config";
 
 // GET /api/public/links?tag=tagName - Get public links by tag name
-// No authentication required
+// No authentication required - uses internal API with API key
 async function getHandler(request: NextRequest) {
   try {
-    const searchParams = request.nextUrl.searchParams;
-    const tagName = searchParams.get("tag");
-
-    if (!tagName) {
+    // Get API key from environment
+    const tagName = "littlelink";
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      console.error("API_KEY not configured for public endpoint");
       return NextResponse.json(
-        { error: "Tag name is required" },
-        { status: 400 }
+        { error: "Service configuration error" },
+        { status: 500 }
       );
     }
 
-    // Find the tag by name
-    const [tag] = await db
-      .select()
-      .from(tags)
-      .where(eq(tags.name, tagName))
-      .limit(1);
+    // Call internal /api/links endpoint with API key
+    const appUrl = getAppUrl();
+    const apiUrl = `${appUrl}/api/links?tag=${encodeURIComponent(tagName)}`;
 
-    if (!tag) {
-      return NextResponse.json({ links: [] });
+    const response = await fetch(apiUrl, {
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error(`API request failed: ${response.status}`);
     }
 
-    // Get all links with this tag that are active
-    const linksWithTag = await db
-      .select({
-        id: links.id,
-        shortCode: links.shortCode,
-        originalUrl: links.originalUrl,
-        title: links.title,
-        description: links.description,
-        clicks: links.clicks,
-        createdAt: links.createdAt,
-      })
-      .from(links)
-      .innerJoin(linkTags, eq(links.id, linkTags.linkId))
-      .where(
-        and(
-          eq(linkTags.tagId, tag.id),
-          eq(links.isActive, true)
-        )
-      )
-      .orderBy(links.createdAt);
+    const data = await response.json();
 
-    return NextResponse.json({ links: linksWithTag });
+    // Filter links by tag name and only return active links
+    const filteredLinks = data.links
+      .filter((link: any) => {
+        const hasTag = link.tags?.some((tag: any) => tag.name === tagName);
+        return hasTag && link.isActive;
+      })
+      .map((link: any) => ({
+        shortCode: link.shortCode,
+        originalUrl: link.originalUrl,
+        title: link.title,
+      }));
+
+    return NextResponse.json({ links: filteredLinks });
   } catch (error) {
     console.error("Error fetching public links:", error);
     return NextResponse.json(

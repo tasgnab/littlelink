@@ -1,11 +1,29 @@
-import { getLinktreeLinks } from "@/lib/services/links";
-import { getAppUrl, clientConfig } from "@/lib/config";
+import { clientConfig } from "@/lib/config";
 import { getFaviconUrl, getBrandColors } from "@/lib/utils";
 import Image from "next/image";
 
+async function getPublicLinks() {
+  const response = await fetch(`${clientConfig.app.url}/api/public/links`, {
+    next: { revalidate: 60 }, // Revalidate every 60 seconds
+  });
+
+  if (!response.ok) {
+    console.error("Failed to fetch public links:", response.statusText);
+    return [];
+  }
+
+  const data = await response.json();
+  return data.links || [];
+}
+
+interface LinktreeLink {
+  shortCode: string;
+  originalUrl: string;
+  title?: string;
+}
+
 export default async function Home() {
-  const linktreeLinks = await getLinktreeLinks();
-  const appUrl = getAppUrl();
+  const linktreeLinks = await getPublicLinks();
   const gravatarUrl = clientConfig.gravatar;
 
   return (
@@ -58,12 +76,12 @@ export default async function Home() {
               </p>
             </div>
           ) : (
-            linktreeLinks.map((link) => {
+            linktreeLinks.map((link: LinktreeLink) => {
               const brandColors = getBrandColors(link.originalUrl);
               return (
                 <a
-                  key={link.id}
-                  href={`${appUrl}/${link.shortCode}`}
+                  key={link.shortCode}
+                  href={`${clientConfig.app.url}/${link.shortCode}`}
                   className="block w-full rounded-lg p-2 hover:shadow-lg transition-all duration-200 group border-2 border-transparent hover:brightness-110"
                   style={{
                     background: brandColors.bg,
@@ -83,11 +101,6 @@ export default async function Home() {
                       <h3 className="text-sm font-semibold transition-colors">
                         {link.title || link.shortCode}
                       </h3>
-                      {link.description && (
-                        <p className="text-xs opacity-80">
-                          {link.description}
-                        </p>
-                      )}
                     </div>
                   </div>
                 </a>

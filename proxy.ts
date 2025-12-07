@@ -7,12 +7,12 @@ export default async function proxy(request: NextRequest) {
 
   // Allow public access to:
   // 1. Auth pages (/auth/*)
-  // 2. API auth routes (/api/auth/*)
+  // 2. All API routes (/api/*) - they handle their own authentication
   // 3. Short URL redirects (/:shortCode)
   // 4. Static files and Next.js internals
   // 5. Root page (/)
   const isAuthPage = pathname.startsWith("/auth");
-  const isAuthApi = pathname.startsWith("/api/auth");
+  const isApiRoute = pathname.startsWith("/api");
   const isRootPage = pathname === "/";
   const isStaticFile =
     pathname.startsWith("/_next") ||
@@ -25,7 +25,7 @@ export default async function proxy(request: NextRequest) {
     !pathname.startsWith("/dashboard") &&
     !pathname.startsWith("/auth");
 
-  if (isAuthPage || isAuthApi || isRootPage || isStaticFile || isShortCode) {
+  if (isAuthPage || isApiRoute || isRootPage || isStaticFile || isShortCode) {
     return NextResponse.next();
   }
 
