@@ -163,7 +163,7 @@ export const serverConfig = {
  */
 export const clientConfig = {
   app: {
-    url: getOptionalEnv("NEXT_PUBLIC_APP_URL", "http://localhost:3000"),
+    url: process.env.NEXT_PUBLIC_APP_URL || "",
   },
   gravatar: process.env.NEXT_PUBLIC_GRAVATAR || null,
   title: process.env.NEXT_PUBLIC_TITLE || "LittleLink",
