@@ -4,7 +4,7 @@ import { eq, and, gte, sql, desc, count as drizzleCount, inArray } from "drizzle
 import { NextRequest } from "next/server";
 import { Link } from "./links";
 import { parseUserAgent } from "../utils";
-
+import { lookupIP } from "@/lib/services/geolocation";
 
 export interface Click {
   id: string;
@@ -106,8 +106,6 @@ export async function trackVisit(request: NextRequest, link: Link) {
 
   const { device, browser, os } = parseUserAgent(userAgent);
 
-  // Dynamically import geolocation service
-  const { lookupIP } = await import("@/lib/services/geolocation");
   const { country, city } = await lookupIP(ip);
 
   // Don't await this - fire and forget
@@ -143,7 +141,6 @@ export async function trackOrphanedVisit(request: NextRequest, shortCode: string
   const { device, browser, os } = parseUserAgent(userAgent);
 
   // Dynamically import geolocation service
-  const { lookupIP } = await import("@/lib/services/geolocation");
   const { country, city } = await lookupIP(ip);
 
   // Don't await this - fire and forget
