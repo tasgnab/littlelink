@@ -98,13 +98,6 @@ export const serverConfig = {
 
   isGitHubActions: process.env.GITHUB_ACTIONS === "true",
 
-  maxmind: {
-    licenseKey: process.env.MAXMIND_LICENSE_KEY || null,
-    databasePath: process.env.MAXMIND_DATABASE_PATH || "./data/GeoLite2-City.mmdb",
-    blobToken: process.env.BLOB_READ_WRITE_TOKEN || null,
-    storageMode: (process.env.MAXMIND_STORAGE_MODE || "local") as "local" | "blob",
-  },
-
   rateLimit: {
     api: {
       requests: parseInt(process.env.RATE_LIMIT_API_REQUESTS || "100"),
