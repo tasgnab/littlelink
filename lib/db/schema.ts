@@ -8,6 +8,8 @@ import {
   varchar,
   primaryKey,
   index,
+  doublePrecision,
+  cidr,
 } from "drizzle-orm/pg-core";
 import type { AdapterAccount } from "@auth/core/adapters";
 
@@ -182,5 +184,54 @@ export const orphanedVisits = pgTable(
   (table) => [
     index("shortCode_orphan_idx").on(table.shortCode),
     index("timestamp_orphan_idx").on(table.timestamp),
+  ]
+);
+
+// GeoLite2 City Locations table
+// Stores location data from MaxMind GeoLite2 City database
+export const geoLiteCityLocations = pgTable(
+  "geoLiteCityLocations",
+  {
+    geonameId: integer("geoname_id").primaryKey().notNull(),
+    localeCode: varchar("locale_code", { length: 10 }).notNull(),
+    continentCode: varchar("continent_code", { length: 2 }),
+    continentName: text("continent_name"),
+    countryIsoCode: varchar("country_iso_code", { length: 2 }),
+    countryName: text("country_name"),
+    subdivision1IsoCode: varchar("subdivision_1_iso_code", { length: 10 }),
+    subdivision1Name: text("subdivision_1_name"),
+    subdivision2IsoCode: varchar("subdivision_2_iso_code", { length: 10 }),
+    subdivision2Name: text("subdivision_2_name"),
+    cityName: text("city_name"),
+    metroCode: integer("metro_code"),
+    timeZone: text("time_zone"),
+    isInEuropeanUnion: boolean("is_in_european_union").notNull().default(false),
+  },
+  (table) => [
+    index("country_iso_idx").on(table.countryIsoCode),
+    index("city_name_idx").on(table.cityName),
+  ]
+);
+
+// GeoLite2 City Blocks IPv4 table
+// Maps IP address ranges (CIDR) to geoname_id for geolocation lookups
+export const geoLiteCityBlocksIPv4 = pgTable(
+  "geoLiteCityBlocksIPv4",
+  {
+    network: cidr("network").primaryKey().notNull(),
+    geonameId: integer("geoname_id"),
+    registeredCountryGeonameId: integer("registered_country_geoname_id"),
+    representedCountryGeonameId: integer("represented_country_geoname_id"),
+    isAnonymousProxy: boolean("is_anonymous_proxy").notNull().default(false),
+    isSatelliteProvider: boolean("is_satellite_provider").notNull().default(false),
+    postalCode: varchar("postal_code", { length: 20 }),
+    latitude: doublePrecision("latitude"),
+    longitude: doublePrecision("longitude"),
+    accuracyRadius: integer("accuracy_radius"),
+    isAnycast: boolean("is_anycast"),
+  },
+  (table) => [
+    index("geoname_id_idx").on(table.geonameId),
+    index("network_idx").on(table.network), // For efficient IP lookups using CIDR operators
   ]
 );

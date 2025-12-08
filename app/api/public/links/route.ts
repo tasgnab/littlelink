@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimiters, applyRateLimit } from "@/lib/rate-limit";
 import { getAppUrl } from "@/lib/config";
 
-// GET /api/public/links?tag=tagName - Get public links by tag name
-// No authentication required - uses internal API with API key
 async function getHandler(request: NextRequest) {
   try {
     // Get API key from environment

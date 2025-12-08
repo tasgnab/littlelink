@@ -1,11 +1,6 @@
-import { Reader, ReaderModel } from "@maxmind/geoip2-node";
-import { config } from "@/lib/config";
-import fs from "fs";
-import path from "path";
-import os from "os";
-
-let reader: ReaderModel | null = null;
-let initializationPromise: Promise<void> | null = null;
+import { db } from "@/lib/db";
+import { geoLiteCityBlocksIPv4, geoLiteCityLocations } from "@/lib/db/schema";
+import { sql } from "drizzle-orm";
 
 export interface GeoLocation {
   country: string | null;
@@ -13,175 +8,15 @@ export interface GeoLocation {
 }
 
 /**
- * Initialize the MaxMind GeoIP2 reader from Vercel Blob
- * Downloads the database to a temporary file and opens it
- * Checks temp directory first to avoid re-downloading on every cold start
- */
-async function initializeFromBlob(): Promise<void> {
-  const blobToken = config.maxmind.blobToken;
-
-  if (!blobToken) {
-    console.error("❌ BLOB_READ_WRITE_TOKEN not set!");
-    console.error("   Geolocation will be disabled.");
-    console.error("   Set BLOB_READ_WRITE_TOKEN environment variable or change MAXMIND_STORAGE_MODE to 'local'");
-    return;
-  }
-
-  try {
-    const tempDir = os.tmpdir();
-    const tempPath = path.join(tempDir, "GeoLite2-City.mmdb");
-
-    // Check if database already exists in temp directory
-    if (fs.existsSync(tempPath)) {
-      console.log("✓ Found cached GeoLite2 database in temp directory");
-      console.log(`  Location: ${tempPath}`);
-
-      try {
-        // Try to open the cached database
-        reader = await Reader.open(tempPath);
-        const stats = fs.statSync(tempPath);
-        console.log(`✅ MaxMind GeoIP2 database loaded from cache (${(stats.size / 1024 / 1024).toFixed(2)} MB)`);
-        return;
-      } catch (error) {
-        console.warn("⚠️  Cached database is corrupted or invalid, will re-download");
-        // Delete corrupted file
-        fs.unlinkSync(tempPath);
-      }
-    }
-
-    // Import Vercel Blob SDK
-    const { list } = await import("@vercel/blob");
-
-    console.log("🔍 Looking for GeoLite2 database in Vercel Blob...");
-
-    // List all blobs and find our database
-    const { blobs } = await list({
-      token: blobToken,
-    });
-
-    const geoDbBlob = blobs.find((blob) => blob.pathname === "GeoLite2-City.mmdb");
-
-    if (!geoDbBlob) {
-      console.error("❌ GeoLite2 database not found in Vercel Blob!");
-      console.error("   Run 'npm run upload-geodb-to-blob' to upload it.");
-      return;
-    }
-
-    console.log(`✓ Found database at: ${geoDbBlob.url}`);
-    console.log("⬇️  Downloading GeoLite2 database from Vercel Blob...");
-
-    // Download database to temp file
-    const response = await fetch(geoDbBlob.url);
-
-    if (!response.ok) {
-      throw new Error(`Failed to download from blob: ${response.statusText}`);
-    }
-
-    const buffer = await response.arrayBuffer();
-
-    console.log(`💾 Saving to: ${tempPath}`);
-
-    // Write to temp file
-    fs.writeFileSync(tempPath, Buffer.from(buffer));
-
-    // Open the database
-    reader = await Reader.open(tempPath);
-
-    console.log(`✅ MaxMind GeoIP2 database loaded successfully from Vercel Blob (${(buffer.byteLength / 1024 / 1024).toFixed(2)} MB)`);
-  } catch (error) {
-    console.error("❌ Failed to initialize MaxMind GeoIP2 from Vercel Blob:");
-    console.error(error);
-    reader = null;
-  }
-}
-
-/**
- * Initialize the MaxMind GeoIP2 reader from local file
- */
-async function initializeFromLocal(): Promise<void> {
-  try {
-    const dbPath = config.maxmind.databasePath;
-
-    console.log(`🔍 Looking for GeoLite2 database at: ${dbPath}`);
-
-    // Check if database file exists
-    if (!fs.existsSync(dbPath)) {
-      console.error(`❌ MaxMind database not found at ${dbPath}`);
-      console.error("   Geolocation will be disabled.");
-      console.error("   Run 'npm run download-geodb' to download the database.");
-      return;
-    }
-
-    reader = await Reader.open(dbPath);
-    console.log("✅ MaxMind GeoIP2 database loaded successfully from local file");
-  } catch (error) {
-    console.error("❌ Failed to initialize MaxMind GeoIP2 from local file:");
-    console.error(error);
-    reader = null;
-  }
-}
-
-/**
- * Initialize the MaxMind GeoIP2 reader
- * This should be called once when the app starts
- * Safe to call multiple times - will only initialize once
- */
-export async function initializeGeoIP(): Promise<void> {
-  // If already initialized, return
-  if (reader !== null) {
-    return;
-  }
-
-  // If initialization is in progress, wait for it
-  if (initializationPromise !== null) {
-    return initializationPromise;
-  }
-
-  // Start initialization
-  initializationPromise = (async () => {
-    const storageMode = config.maxmind.storageMode;
-
-    console.log("===========================================");
-    console.log("GeoIP Initialization Starting");
-    console.log(`Storage mode: ${storageMode}`);
-    console.log(`Has blob token: ${!!config.maxmind.blobToken}`);
-    console.log(`Has license key: ${!!config.maxmind.licenseKey}`);
-    console.log("===========================================");
-
-    if (storageMode === "blob") {
-      await initializeFromBlob();
-    } else {
-      await initializeFromLocal();
-    }
-
-    console.log(`GeoIP initialization complete. Reader initialized: ${reader !== null}`);
-  })();
-
-  await initializationPromise;
-}
-
-/**
- * Lookup geolocation for an IP address
- * Initializes the reader on first use if not already initialized
- * Returns null if the database is not initialized or if lookup fails
+ * Lookup geolocation for an IP address using database tables
+ * Uses PostgreSQL CIDR operators for efficient IP range lookups
+ * Returns null if the IP is not found or if lookup fails
  */
 export async function lookupIP(ip: string | null): Promise<GeoLocation> {
   const emptyLocation: GeoLocation = { country: null, city: null };
 
   // Return empty if no IP provided
   if (!ip) {
-    return emptyLocation;
-  }
-
-  // Lazy initialization - initialize if not already done
-  if (!reader) {
-    console.log("GeoIP reader not initialized, attempting lazy initialization...");
-    await initializeGeoIP();
-  }
-
-  // Return empty if reader still not initialized after initialization attempt
-  if (!reader) {
-    console.warn("GeoIP reader could not be initialized. Geolocation will not be available.");
     return emptyLocation;
   }
 
@@ -200,33 +35,77 @@ export async function lookupIP(ip: string | null): Promise<GeoLocation> {
     // Extract first IP if multiple IPs in x-forwarded-for
     const firstIp = ip.split(",")[0].trim();
 
-    // Lookup the IP
-    const response = reader.city(firstIp);
+    // Query the database to find the IP block that contains this IP
+    // Using PostgreSQL's << operator: checks if IP is contained in CIDR range
+    const [block] = await db
+      .select({
+        geonameId: geoLiteCityBlocksIPv4.geonameId,
+        registeredCountryGeonameId: geoLiteCityBlocksIPv4.registeredCountryGeonameId,
+      })
+      .from(geoLiteCityBlocksIPv4)
+      .where(sql`${firstIp}::inet << ${geoLiteCityBlocksIPv4.network}`)
+      .limit(1);
+
+    // If no block found, return empty
+    if (!block) {
+      return emptyLocation;
+    }
+
+    // Use geonameId first, fall back to registeredCountryGeonameId
+    const geonameId = block.geonameId || block.registeredCountryGeonameId;
+
+    // If no geoname ID, return empty
+    if (!geonameId) {
+      return emptyLocation;
+    }
+
+    // Look up the location details
+    const [location] = await db
+      .select({
+        countryName: geoLiteCityLocations.countryName,
+        cityName: geoLiteCityLocations.cityName,
+      })
+      .from(geoLiteCityLocations)
+      .where(sql`${geoLiteCityLocations.geonameId} = ${geonameId}`)
+      .limit(1);
+
+    // If no location found, return empty
+    if (!location) {
+      return emptyLocation;
+    }
 
     return {
-      country: response.country?.names?.en || response.country?.isoCode || null,
-      city: response.city?.names?.en || null,
+      country: location.countryName,
+      city: location.cityName,
     };
   } catch (error) {
-    // IP not found in database or invalid IP - return empty
+    // Log error and return empty on failure
+    console.error("Error looking up IP geolocation:", error);
     return emptyLocation;
   }
 }
 
 /**
- * Check if GeoIP is available
+ * Initialize GeoIP (no-op for database-based implementation)
+ * Kept for backward compatibility
  */
-export function isGeoIPAvailable(): boolean {
-  return reader !== null;
+export async function initializeGeoIP(): Promise<void> {
+  // No initialization needed - database is always ready
+  console.log("✅ GeoIP using database tables (no initialization required)");
 }
 
 /**
- * Close the reader (cleanup)
+ * Check if GeoIP is available
+ * Always returns true for database implementation
+ */
+export function isGeoIPAvailable(): boolean {
+  return true;
+}
+
+/**
+ * Close the reader (no-op for database implementation)
+ * Kept for backward compatibility
  */
 export function closeGeoIP(): void {
-  if (reader) {
-    // The @maxmind/geoip2-node Reader doesn't have a close method
-    // but we can null it out to allow garbage collection
-    reader = null;
-  }
+  // No cleanup needed for database implementation
 }
