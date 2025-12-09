@@ -55,7 +55,6 @@ Required environment variables:
 - `NEXTAUTH_SECRET`: Generate with `openssl rand -base64 32`
 - `GOOGLE_CLIENT_ID`: From Google Cloud Console
 - `GOOGLE_CLIENT_SECRET`: From Google Cloud Console
-- `NEXT_PUBLIC_APP_URL`: Public-facing app URL
 - `ALLOWED_USER_EMAIL`: Email address allowed to sign in
 
 Optional (for geolocation analytics):
@@ -172,7 +171,6 @@ Update these for production:
 
 ```env
 NEXTAUTH_URL=https://your-domain.com
-NEXT_PUBLIC_APP_URL=https://your-domain.com
 ALLOWED_USER_EMAIL=your-production-email@example.com
 ```
 

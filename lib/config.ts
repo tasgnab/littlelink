@@ -49,11 +49,7 @@ if (isServer && allowedEmail && !validateEmail(allowedEmail)) {
   );
 }
 
-// Validate app URL
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-if (appUrl && !validateUrl(appUrl)) {
-  throw new Error(`NEXT_PUBLIC_APP_URL must be a valid URL. Got: ${appUrl}`);
-}
+// Note: We use NEXTAUTH_URL as the app URL (no need for duplicate NEXT_PUBLIC_APP_URL)
 
 // Validate geolocation configuration (server-side only)
 // Supports comma-separated list for fallback: "abstract-api,ipgeolocation"
@@ -116,7 +112,12 @@ export const serverConfig = {
   },
 
   app: {
-    url: appUrl,
+    // Use NEXTAUTH_URL as the app URL (server-side)
+    url: requireEnv(
+      process.env.NEXTAUTH_URL,
+      "NEXTAUTH_URL",
+      "NEXTAUTH_URL is required for authentication. Set it to your app's URL (e.g., http://localhost:3000)"
+    ),
   },
 
   isGitHubActions: process.env.GITHUB_ACTIONS === "true",
@@ -160,9 +161,6 @@ export const serverConfig = {
  * These variables are accessible in the browser (must be prefixed with NEXT_PUBLIC_)
  */
 export const clientConfig = {
-  app: {
-    url: process.env.NEXT_PUBLIC_APP_URL || "",
-  },
   gravatar: process.env.NEXT_PUBLIC_GRAVATAR || null,
   title: process.env.NEXT_PUBLIC_TITLE || "LittleLink",
   tagline: process.env.NEXT_PUBLIC_TITLE_TAGLINE || "Your personal link hub",
@@ -170,16 +168,17 @@ export const clientConfig = {
 
 /**
  * Get the app URL (works on both client and server)
- * Falls back to window.location.origin on the client if not set
+ * Server-side: Uses NEXTAUTH_URL
+ * Client-side: Uses window.location.origin
  */
 export function getAppUrl(): string {
-  // Server-side
+  // Server-side: Use NEXTAUTH_URL
   if (typeof window === "undefined") {
     return serverConfig.app.url;
   }
 
-  // Client-side - prefer env var, fall back to window.location
-  return clientConfig.app.url || window.location.origin;
+  // Client-side: Use window.location.origin
+  return window.location.origin;
 }
 
 /**

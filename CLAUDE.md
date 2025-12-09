@@ -37,8 +37,15 @@ const dbUrl = config.database.url; // ✅ Correct
 **Key configs:**
 - Database: `config.database.url`
 - Auth: `config.auth.*` (NextAuth settings, allowed email)
+- App URL: `config.app.url` (uses NEXTAUTH_URL, no separate env var needed)
 - Rate limits: `config.rateLimit.*` (api, redirect, auth, strict)
-- Geolocation: `config.geolocation.*` (provider, Abstract API key)
+- Geolocation: `config.geolocation.*` (providers, API keys)
+
+**App URL Helper:**
+```typescript
+import { getAppUrl } from "@/lib/config";
+const url = getAppUrl(); // Server: NEXTAUTH_URL, Client: window.location.origin
+```
 
 ### Authentication
 
@@ -162,11 +169,10 @@ All routes require authentication except public redirects. Read-only endpoints s
 **Required:**
 ```env
 DATABASE_URL=postgresql://...
-NEXTAUTH_URL=https://your-app.com
+NEXTAUTH_URL=https://your-app.com  # Also used as app URL
 NEXTAUTH_SECRET=random-secret
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
-NEXT_PUBLIC_APP_URL=https://your-app.com
 ALLOWED_USER_EMAIL=your@email.com
 ```
 
