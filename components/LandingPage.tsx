@@ -24,7 +24,7 @@ export default function LandingPage() {
         try {
             setLoading(true);
             setError("");
-            const response = await fetch(`${clientConfig.app.url}/api/public/links`);
+            const response = await fetch('/api/public/links');
             const data = await response.json();
 
             if (!response.ok) {
@@ -104,7 +104,7 @@ export default function LandingPage() {
                                 return (
                                     <a
                                         key={link.shortCode}
-                                        href={`${clientConfig.app.url}/${link.shortCode}`}
+                                        href={`/${link.shortCode}`}
                                         className="block w-full rounded-lg p-2 hover:shadow-lg transition-all duration-200 group border-2 border-transparent hover:brightness-110"
                                         style={{
                                             background: brandColors.bg,
