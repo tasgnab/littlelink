@@ -6,7 +6,8 @@ A modern, self-hosted link shortener built with Next.js, featuring Google OAuth 
 
 - 🔗 **URL Shortening**: Create short links with custom or auto-generated codes
 - 🔐 **Single-User Auth**: Google OAuth with email restriction (single authorized user)
-- 📊 **Analytics**: Track clicks, devices, browsers, and operating systems
+- 📊 **Analytics**: Track clicks, devices, browsers, operating systems, and geographic location
+- 🌍 **Geolocation**: IP-based location tracking with multiple providers and automatic fallback
 - 🎨 **Modern UI**: Clean, responsive interface built with Tailwind CSS
 - 📱 **QR Codes**: Generate QR codes for any short link
 - 🔄 **Link Management**: Toggle active/inactive status, set expiration dates
@@ -56,6 +57,12 @@ Required environment variables:
 - `GOOGLE_CLIENT_SECRET`: From Google Cloud Console
 - `NEXT_PUBLIC_APP_URL`: Public-facing app URL
 - `ALLOWED_USER_EMAIL`: Email address allowed to sign in
+
+Optional (for geolocation analytics):
+
+- `GEOLOCATION_PROVIDER`: Comma-separated provider list (e.g., `abstract-api,ipgeolocation`)
+- `ABSTRACT_API_KEY`: From [Abstract API](https://www.abstractapi.com/api/ip-geolocation-api)
+- `IPGEOLOCATION_API_KEY`: From [IPGeolocation](https://ipgeolocation.io)
 
 ### 4. Set Up Google OAuth
 
@@ -164,6 +171,17 @@ NEXTAUTH_URL=https://your-domain.com
 NEXT_PUBLIC_APP_URL=https://your-domain.com
 ALLOWED_USER_EMAIL=your-production-email@example.com
 ```
+
+## Geolocation
+
+Geographic analytics are powered by external geolocation APIs with automatic fallback:
+
+- **Supports multiple providers**: Abstract API, IPGeolocation, and more
+- **Automatic fallback**: If primary provider fails, tries next in chain
+- **Optional**: Works without geolocation (returns null for location data)
+- **Privacy-friendly**: Private/localhost IPs detected locally, not sent to providers
+
+Configure with `GEOLOCATION_PROVIDER` environment variable. See [CLAUDE.md](./CLAUDE.md) for details.
 
 ## Security Notes
 
