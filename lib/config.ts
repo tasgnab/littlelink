@@ -56,15 +56,28 @@ if (appUrl && !validateUrl(appUrl)) {
 }
 
 // Validate geolocation configuration (server-side only)
-const geoProvider = process.env.GEOLOCATION_PROVIDER || "abstract-api";
-if (isServer && geoProvider === "abstract-api") {
-  if (!process.env.ABSTRACT_API_KEY) {
-    throw new Error(
-      "ABSTRACT_API_KEY is required when using abstract-api geolocation provider. Get your API key at https://www.abstractapi.com/api/ip-geolocation-api"
-    );
+// Supports comma-separated list for fallback: "abstract-api,ipgeolocation"
+const geoProviders = (process.env.GEOLOCATION_PROVIDER || "abstract-api")
+  .split(",")
+  .map((p) => p.trim());
+
+if (isServer) {
+  if (geoProviders.includes("abstract-api")) {
+    if (!process.env.ABSTRACT_API_KEY) {
+      throw new Error(
+        "ABSTRACT_API_KEY is required when using abstract-api geolocation provider. Get your API key at https://www.abstractapi.com/api/ip-geolocation-api"
+      );
+    }
+  }
+
+  if (geoProviders.includes("ipgeolocation")) {
+    if (!process.env.IPGEOLOCATION_API_KEY) {
+      throw new Error(
+        "IPGEOLOCATION_API_KEY is required when using ipgeolocation provider. Get your API key at https://ipgeolocation.io"
+      );
+    }
   }
 }
-
 /**
  * Server-side configuration
  * These variables are only accessible on the server
@@ -128,9 +141,16 @@ export const serverConfig = {
   },
 
   geolocation: {
-    provider: process.env.GEOLOCATION_PROVIDER || "abstract-api",
+    // Supports comma-separated list for fallback chain
+    // Example: "abstract-api,ipgeolocation" tries abstract-api first, then ipgeolocation
+    providers: (process.env.GEOLOCATION_PROVIDER || "abstract-api")
+      .split(",")
+      .map((p) => p.trim()),
     abstractApi: {
       apiKey: process.env.ABSTRACT_API_KEY || "",
+    },
+    ipGeolocation: {
+      apiKey: process.env.IPGEOLOCATION_API_KEY || "",
     },
   },
 } as const;

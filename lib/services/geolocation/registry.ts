@@ -35,3 +35,13 @@ export function getProvider(name: string): GeoLocationProvider {
   }
   return provider;
 }
+
+/**
+ * Get multiple providers by names
+ * @param names - Array of provider names
+ * @returns Array of provider implementations
+ * @throws Error if any provider is not registered
+ */
+export function getProviders(names: string[]): GeoLocationProvider[] {
+  return names.map((name) => getProvider(name));
+}

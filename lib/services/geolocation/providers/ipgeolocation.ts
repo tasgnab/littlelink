@@ -6,20 +6,20 @@ import type { GeoLocation, GeoLocationProvider } from "../types";
  * Documentation: https://docs.abstractapi.com/ip-geolocation
  */
 
-interface AbstractAPIResponse {
-  ip_address: string;
+interface IPGeolocationResponse {
+  ip: string;
   location: {
     city: string | null;
-    country: string | null;
-    country_code: string | null;
-    region: string | null;
-    postal_code: string | null;
+    country_name: string | null;
+    country_code2: string | null;
+    state_prov: string | null;
+    zipcode: string | null;
   };
 }
 
-export function createAbstractAPIProvider(apiKey: string): GeoLocationProvider {
+export function createIPGeolocationProvider(apiKey: string): GeoLocationProvider {
   return {
-    name: "abstract-api",
+    name: "ipgeolocation",
     lookupIP: async (ip: string | null): Promise<GeoLocation> => {
       const emptyLocation: GeoLocation = { country: null, city: null };
 
@@ -35,7 +35,7 @@ export function createAbstractAPIProvider(apiKey: string): GeoLocationProvider {
         const timeoutId = setTimeout(() => controller.abort(), 5000);
 
         const response = await fetch(
-          `https://ip-intelligence.abstractapi.com/v1/?api_key=${apiKey}&ip_address=${ip}`,
+          `https://api.ipgeolocation.io/v2/ipgeo?apiKey=${apiKey}&ip=${ip}&fields=location`,
           {
             signal: controller.signal,
           }
@@ -51,16 +51,16 @@ export function createAbstractAPIProvider(apiKey: string): GeoLocationProvider {
           return emptyLocation;
         }
 
-        const data = (await response.json()) as AbstractAPIResponse;
+        const data = (await response.json()) as IPGeolocationResponse;
 
         return {
-          country: data.location?.country || null,
+          country: data.location?.country_name || null,
           city: data.location?.city || null,
         };
       } catch (error) {
         // Log error and return empty on failure
         if ((error as Error).name === "AbortError") {
-          console.error("Abstract API request timed out after 5 seconds");
+          console.error("IP Geolocation request timed out after 5 seconds");
         } else {
           console.error("Error looking up IP geolocation:", error);
         }

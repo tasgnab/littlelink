@@ -78,36 +78,54 @@ All tables use UUID primary keys with proper cascades.
 
 Fast redirects while capturing full analytics.
 
-### Geolocation (Abstract API)
+### Geolocation (Provider Registry with Fallback)
 
-**Provider Registry System**: Extensible architecture supporting multiple geolocation providers.
+**Provider Registry System**: Extensible architecture with automatic fallback support.
 
-**Current Provider**: Abstract API IP Intelligence
-- API-based geolocation lookups
-- Returns country and city data
-- 5-second timeout for reliability
-- Graceful error handling (returns null on failure)
+**Fallback Strategy**: Tries each provider in order until one succeeds
+- If provider returns empty data (null country/city), tries next provider
+- If provider fails/times out, tries next provider
+- Returns first successful result
+- Returns null if all providers fail
+
+**Available Providers:**
+1. **Abstract API** (`abstract-api`)
+   - API: https://www.abstractapi.com/api/ip-geolocation-api
+   - Free tier available
+
+2. **IPGeolocation** (`ipgeolocation`)
+   - API: https://ipgeolocation.io
+   - Free tier available
+
+**Configuration Examples:**
+```env
+# Single provider
+GEOLOCATION_PROVIDER=abstract-api
+ABSTRACT_API_KEY=your_key
+
+# Fallback chain (recommended)
+GEOLOCATION_PROVIDER=abstract-api,ipgeolocation
+ABSTRACT_API_KEY=your_abstract_key
+IPGEOLOCATION_API_KEY=your_ipgeolocation_key
+```
 
 **Provider Structure:**
 ```
 lib/services/geolocation/
 ├── types.ts              # GeoLocation and GeoLocationProvider interfaces
-├── registry.ts           # Provider registration system
+├── registry.ts           # Provider registration system with fallback
 ├── providers/
-│   └── abstract-api.ts   # Abstract API implementation
-└── geolocation.ts        # Main service (uses configured provider)
+│   ├── abstract-api.ts   # Abstract API implementation
+│   └── ipgeolocation.ts  # IPGeolocation implementation
+└── geolocation.ts        # Main service (fallback logic)
 ```
-
-**Configuration:**
-- Set `GEOLOCATION_PROVIDER=abstract-api` (default)
-- Set `ABSTRACT_API_KEY` to your API key from https://www.abstractapi.com/api/ip-geolocation-api
-- Free tier available with registration
 
 **Adding New Providers:**
 1. Create file in `lib/services/geolocation/providers/`
 2. Implement `GeoLocationProvider` interface
 3. Register in `geolocation.ts`
 4. Add configuration to `lib/config.ts`
+5. Add to comma-separated `GEOLOCATION_PROVIDER` list
 
 ## API Routes
 
@@ -152,9 +170,10 @@ ALLOWED_USER_EMAIL=your@email.com
 
 **Optional:**
 ```env
-# Geolocation Provider
-GEOLOCATION_PROVIDER=abstract-api    # Provider name (default: abstract-api)
-ABSTRACT_API_KEY=...                 # Get free at abstractapi.com/api/ip-geolocation-api
+# Geolocation Providers (supports fallback chain)
+GEOLOCATION_PROVIDER=abstract-api,ipgeolocation  # Comma-separated list
+ABSTRACT_API_KEY=...                              # Get free at abstractapi.com
+IPGEOLOCATION_API_KEY=...                         # Get free at ipgeolocation.io
 
 # Rate Limiting (all have sensible defaults)
 RATE_LIMIT_API_REQUESTS=100
@@ -196,10 +215,12 @@ curl -X POST -H "Authorization: Bearer sk_xxx" http://localhost:3000/api/links  
 ## Deployment (Vercel)
 
 1. Set all required environment variables in Vercel dashboard
-2. For geolocation:
-   - Get API key from https://www.abstractapi.com/api/ip-geolocation-api
-   - Set `ABSTRACT_API_KEY` in Vercel dashboard
-   - Optional: Set `GEOLOCATION_PROVIDER=abstract-api` (this is the default)
+2. For geolocation (recommended: configure fallback):
+   - Get API keys from providers:
+     - Abstract API: https://www.abstractapi.com/api/ip-geolocation-api
+     - IPGeolocation: https://ipgeolocation.io
+   - Set `GEOLOCATION_PROVIDER=abstract-api,ipgeolocation` for fallback
+   - Set `ABSTRACT_API_KEY` and `IPGEOLOCATION_API_KEY` in Vercel
 3. Deploy
 
 ## GitHub Actions
