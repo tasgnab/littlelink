@@ -46,27 +46,8 @@ export const accounts = pgTable(
   ]
 );
 
-export const sessions = pgTable("session", {
-  sessionToken: text("sessionToken").primaryKey(),
-  userId: uuid("userId")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  expires: timestamp("expires", { mode: "date" }).notNull(),
-});
-
-export const verificationTokens = pgTable(
-  "verificationToken",
-  {
-    identifier: text("identifier").notNull(),
-    token: text("token").notNull(),
-    expires: timestamp("expires", { mode: "date" }).notNull(),
-  },
-  (verificationToken) => [
-    primaryKey({
-      columns: [verificationToken.identifier, verificationToken.token],
-    }),
-  ]
-);
+// Note: sessions and verificationTokens tables are not needed
+// This app uses JWT strategy (not database sessions) and OAuth (not email verification)
 
 // Links table
 export const links = pgTable(

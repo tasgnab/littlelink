@@ -57,7 +57,7 @@ const dbUrl = config.database.url; // ✅ Correct
 ### Database Schema
 
 **Tables:**
-- `users`, `accounts`, `sessions`, `verificationTokens` - NextAuth
+- `users`, `accounts` - NextAuth (JWT strategy, no database sessions)
 - `links` - Short code mappings, clicks counter, active flag, expiration
 - `clicks` - Analytics (timestamp, UA, IP, geo, device/browser/OS)
 - `orphanedVisits` - 404 tracking for non-existent short codes
@@ -66,6 +66,8 @@ const dbUrl = config.database.url; // ✅ Correct
 - `apiKeys` - Hashed API keys with last used timestamp
 
 All tables use UUID primary keys with proper cascades.
+
+**Note**: `sessions` and `verificationTokens` tables are not used. The app uses JWT tokens (not database sessions) and OAuth (not email verification).
 
 ### Redirect Flow (`app/[shortCode]/route.ts`)
 

@@ -134,10 +134,14 @@ All API endpoints require authentication except for the redirect handler:
 
 - **users**: User accounts (NextAuth)
 - **accounts**: OAuth accounts (NextAuth)
-- **sessions**: User sessions (NextAuth)
 - **links**: Short link mappings
 - **clicks**: Click tracking and analytics
-- **apiKeys**: API key management (future feature)
+- **tags**: User-defined tags
+- **linkTags**: Link-to-tag relationships
+- **orphanedVisits**: 404 tracking for non-existent short codes
+- **apiKeys**: API key management
+
+Note: This app uses JWT authentication (no database sessions) and OAuth only (no email verification).
 
 ## Development Commands
 
