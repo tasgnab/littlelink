@@ -12,10 +12,6 @@ npm run dev              # Start dev server (Turbopack)
 npm run db:push          # Push schema changes (dev)
 npm run db:studio        # Open Drizzle Studio GUI
 
-# Geolocation
-npm run download-geodb           # Download MaxMind GeoLite2 DB
-npm run upload-geodb-to-blob     # Upload to Vercel Blob
-
 # API Keys
 npm run create-api-key <email> <keyName>
 ```
@@ -42,7 +38,7 @@ const dbUrl = config.database.url; // ✅ Correct
 - Database: `config.database.url`
 - Auth: `config.auth.*` (NextAuth settings, allowed email)
 - Rate limits: `config.rateLimit.*` (api, redirect, auth, strict)
-- Geolocation: `config.maxmind.*` (license key, storage mode)
+- Geolocation: `config.geolocation.*` (provider, Abstract API key)
 
 ### Authentication
 
@@ -82,26 +78,36 @@ All tables use UUID primary keys with proper cascades.
 
 Fast redirects while capturing full analytics.
 
-### Geolocation (MaxMind GeoLite2)
+### Geolocation (Abstract API)
 
-**Two Storage Modes:**
+**Provider Registry System**: Extensible architecture supporting multiple geolocation providers.
 
-**Local** (default) - For dev/self-hosted:
-```bash
-npm run download-geodb  # Downloads to ./data/GeoLite2-City.mmdb
+**Current Provider**: Abstract API IP Intelligence
+- API-based geolocation lookups
+- Returns country and city data
+- 5-second timeout for reliability
+- Graceful error handling (returns null on failure)
+
+**Provider Structure:**
+```
+lib/services/geolocation/
+├── types.ts              # GeoLocation and GeoLocationProvider interfaces
+├── registry.ts           # Provider registration system
+├── providers/
+│   └── abstract-api.ts   # Abstract API implementation
+└── geolocation.ts        # Main service (uses configured provider)
 ```
 
-**Blob** - For Vercel serverless:
-```bash
-npm run upload-geodb-to-blob
-# Set MAXMIND_STORAGE_MODE=blob in Vercel
-```
+**Configuration:**
+- Set `GEOLOCATION_PROVIDER=abstract-api` (default)
+- Set `ABSTRACT_API_KEY` to your API key from https://www.abstractapi.com/api/ip-geolocation-api
+- Free tier available with registration
 
-**Automatic Updates**: Vercel Cron runs every Sunday at 2 AM UTC (`/api/cron/update-geodb`), automatically downloads fresh DB and uploads to Blob.
-
-**Smart Caching**: Checks `/tmp` first, only downloads from Blob on cache miss. Dramatically faster cold starts.
-
-**Privacy**: All geolocation is local, no external API calls.
+**Adding New Providers:**
+1. Create file in `lib/services/geolocation/providers/`
+2. Implement `GeoLocationProvider` interface
+3. Register in `geolocation.ts`
+4. Add configuration to `lib/config.ts`
 
 ## API Routes
 
@@ -131,9 +137,6 @@ All routes require authentication except public redirects. Read-only endpoints s
 - `POST /api/api-keys` - Create key
 - `DELETE /api/api-keys?id=[id]` - Delete key
 
-**Cron:**
-- `GET /api/cron/update-geodb` - Update GeoLite2 DB (Vercel Cron only)
-
 ## Environment Variables
 
 **Required:**
@@ -149,11 +152,9 @@ ALLOWED_USER_EMAIL=your@email.com
 
 **Optional:**
 ```env
-# Geolocation
-MAXMIND_LICENSE_KEY=...              # Get free at maxmind.com
-MAXMIND_STORAGE_MODE=local           # 'local' or 'blob'
-MAXMIND_DATABASE_PATH=./data/...     # Custom path (default shown)
-BLOB_READ_WRITE_TOKEN=...            # For Vercel Blob mode
+# Geolocation Provider
+GEOLOCATION_PROVIDER=abstract-api    # Provider name (default: abstract-api)
+ABSTRACT_API_KEY=...                 # Get free at abstractapi.com/api/ip-geolocation-api
 
 # Rate Limiting (all have sensible defaults)
 RATE_LIMIT_API_REQUESTS=100
@@ -164,9 +165,6 @@ RATE_LIMIT_AUTH_REQUESTS=10
 RATE_LIMIT_AUTH_WINDOW_MS=900000
 RATE_LIMIT_STRICT_REQUESTS=5
 RATE_LIMIT_STRICT_WINDOW_MS=60000
-
-# Cron (auto-set by Vercel)
-CRON_SECRET=...
 ```
 
 **Production Note:** Next.js doesn't load `.env` in production. Use `npm run start:prod` or set vars in deployment platform.
@@ -199,11 +197,10 @@ curl -X POST -H "Authorization: Bearer sk_xxx" http://localhost:3000/api/links  
 
 1. Set all required environment variables in Vercel dashboard
 2. For geolocation:
-   - Create Blob store
-   - Set `MAXMIND_STORAGE_MODE=blob`
-   - Run `npm run upload-geodb-to-blob` locally once
-3. Deploy - `vercel.json` configures weekly cron for DB updates
-4. `CRON_SECRET` is auto-set by Vercel
+   - Get API key from https://www.abstractapi.com/api/ip-geolocation-api
+   - Set `ABSTRACT_API_KEY` in Vercel dashboard
+   - Optional: Set `GEOLOCATION_PROVIDER=abstract-api` (this is the default)
+3. Deploy
 
 ## GitHub Actions
 
@@ -227,5 +224,4 @@ See `.github/workflows/README.md` for details.
 
 - **Async analytics**: Fire-and-forget tracking doesn't block redirects
 - **Indexed queries**: `shortCode`, `userId`, `linkId`, `timestamp`
-- **Smart caching**: GeoLite2 DB cached in `/tmp` for faster cold starts
-- **Efficient geolocation**: Local lookups, no external API calls
+- **Geolocation**: API-based lookups with 5s timeout, failures return gracefully without blocking

@@ -55,6 +55,16 @@ if (appUrl && !validateUrl(appUrl)) {
   throw new Error(`NEXT_PUBLIC_APP_URL must be a valid URL. Got: ${appUrl}`);
 }
 
+// Validate geolocation configuration (server-side only)
+const geoProvider = process.env.GEOLOCATION_PROVIDER || "abstract-api";
+if (isServer && geoProvider === "abstract-api") {
+  if (!process.env.ABSTRACT_API_KEY) {
+    throw new Error(
+      "ABSTRACT_API_KEY is required when using abstract-api geolocation provider. Get your API key at https://www.abstractapi.com/api/ip-geolocation-api"
+    );
+  }
+}
+
 /**
  * Server-side configuration
  * These variables are only accessible on the server
@@ -114,6 +124,13 @@ export const serverConfig = {
     strict: {
       requests: parseInt(process.env.RATE_LIMIT_STRICT_REQUESTS || "5"),
       windowMs: parseInt(process.env.RATE_LIMIT_STRICT_WINDOW_MS || "60000"),
+    },
+  },
+
+  geolocation: {
+    provider: process.env.GEOLOCATION_PROVIDER || "abstract-api",
+    abstractApi: {
+      apiKey: process.env.ABSTRACT_API_KEY || "",
     },
   },
 } as const;
