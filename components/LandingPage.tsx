@@ -1,42 +1,19 @@
-"use client"
 import { clientConfig } from "@/lib/config";
 import { getBrandColors, getFaviconUrl } from "@/lib/utils";
 import Image from "next/image";
-import { useEffect, useState } from "react";
 
 interface LinktreeLink {
     shortCode: string;
     originalUrl: string;
-    title?: string;
+    title: string | null;
 }
 
-export default function LandingPage() {
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState("");
-    const [links, setLinks] = useState<LinktreeLink[] | null>(null);
+interface LandingPageProps {
+    links: LinktreeLink[];
+}
+
+export default function LandingPage({ links }: LandingPageProps) {
     const gravatarUrl = clientConfig.gravatar;
-
-    useEffect(() => {
-        fetchPublicLinks();
-    }, []);
-
-    const fetchPublicLinks = async () => {
-        try {
-            setLoading(true);
-            setError("");
-            const response = await fetch('/api/public/links');
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || "Failed to fetch analytics");
-            }
-            setLinks(data.links);
-        } catch (err: any) {
-            setError(err.message);
-        } finally {
-            setLoading(false);
-        }
-    };
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center">
@@ -78,20 +55,8 @@ export default function LandingPage() {
                         {clientConfig.tagline}
                     </p>
                 </div>
-                {loading && (
-                    <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                        Loading links...
-                    </div>
-                )}
-
-                {error && (
-                    <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-200 rounded-md text-sm">
-                        {error}
-                    </div>
-                )}
                 {/* Links */}
-                {!loading && !error && links && (
-                    <div className="space-y-2 max-w-sm mx-auto">
+                <div className="space-y-2 max-w-sm mx-auto">
                         {links.length === 0 ? (
                             <div className="text-center py-12">
                                 <p className="text-gray-500 dark:text-gray-400">
@@ -130,8 +95,7 @@ export default function LandingPage() {
                                 );
                             })
                         )}
-                    </div>
-                )}
+                </div>
 
                 {/* Footer */}
                 <div className="text-center mt-6 pt-4">
